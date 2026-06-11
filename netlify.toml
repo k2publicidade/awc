@@ -1,0 +1,9 @@
+[build]
+  command = "npm install && npx prisma generate --schema=packages/database/prisma/schema.prisma && cd apps/web && npx next build"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NEXT_PRIVATE_FORCE_TUNNEL = "true"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

@@ -1,0 +1,1204 @@
+// ObrasAWC - Prisma Schema
+// AWC Pré Moldados - Construction Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  ENGENHEIRO
+  ENCARREGADO
+  FINANCEIRO
+  ALMOXARIFE
+  CLIENTE
+}
+
+enum ObraTipo {
+  GALPAO
+  EDIFICIO
+  PONTE
+  MURO_ARRIMO
+  ELEMENTO_ISOLADO
+  OUTRO
+}
+
+enum ObraStatus {
+  PLANEJAMENTO
+  EM_ANDAMENTO
+  PAUSADO
+  CONCLUIDO
+  CANCELADO
+}
+
+enum ClimaCondicao {
+  ENSOLARADO
+  NUBLADO
+  CHUVOSO
+  PARCIALMENTE_NUBLADO
+}
+
+enum Periodo {
+  MANHA
+  TARDE
+  NOITE
+}
+
+enum RdoStatus {
+  RASCUNHO
+  APROVADO
+}
+
+enum OcorrenciaTipo {
+  PARALISACAO
+  INTERFERENCIA
+  PROBLEMA
+  DECISAO
+}
+
+enum OcorrenciaGeralTipo {
+  PROBLEMA_TECNICO
+  PARALISACAO
+  ACIDENTE
+  DECISAO_PROJETO
+  INTERFERENCIA
+  INTEMPERIE
+  OUTRO
+}
+
+enum OcorrenciaStatus {
+  ABERTO
+  EM_TRATAMENTO
+  ENCERRADO
+}
+
+enum PredecessoraTipo {
+  FIM_INICIO
+  INICIO_INICIO
+  FIM_FIM
+}
+
+enum OrcamentoStatus {
+  EM_ELABORACAO
+  ENVIADO
+  APROVADO
+  REPROVADO
+  CANCELADO
+}
+
+enum OrcamentoItemTipo {
+  MATERIAL
+  MAO_OBRA
+  EQUIPAMENTO
+  SERVICO
+}
+
+enum MovimentoTipo {
+  ENTRADA
+  SAIDA
+  PERDA
+}
+
+enum RequisicaoStatus {
+  PENDENTE
+  APROVADA
+  REPROVADA
+  ENTREGUE
+}
+
+enum VinculoTipo {
+  CLT
+  TERCEIRIZADO
+  AUTONOMO
+  SUBEMPREITEIRO
+}
+
+enum ExameResultado {
+  APTO
+  INAPTO
+  RESTRICAO
+}
+
+enum ExameTipo {
+  ASO
+  ESPECIFICO
+}
+
+enum NrTipo {
+  NR_10
+  NR_18
+  NR_35
+  NR_11
+  NR_06
+  OUTRO
+}
+
+enum ContratoTipo {
+  FORNECIMENTO
+  SUBEMPREITADA
+  LOCACAO
+  SERVICO
+}
+
+enum ContratoStatus {
+  EM_NEGOCIACAO
+  VIGENTE
+  VENCIDO
+  ENCERRADO
+  EM_RENOVACAO
+}
+
+enum PagamentoStatus {
+  ABERTO
+  PAGO
+  VENCIDO
+  CANCELADO
+}
+
+enum DocumentoCategoria {
+  PROJETO
+  ART_RRT
+  ENSAIO
+  LAUDO
+  NF
+  CONTRATO
+  ALVARA
+  LICENCA_AMBIENTAL
+  ISS
+  SEGURO
+  MANUAL
+  OUTRO
+}
+
+enum DocumentoStatus {
+  PENDENTE
+  RECEBIDO
+  EM_ANALISE
+  APROVADO
+  VENCIDO
+}
+
+enum MedicaoStatus {
+  EM_ELABORACAO
+  APROVADA_ENGENHEIRO
+  APROVADA_FINANCEIRO
+  APROVADA_CLIENTE
+  REJEITADA
+}
+
+enum LancamentoTipo {
+  RECEITA
+  DESPESA
+}
+
+enum LancamentoStatus {
+  ABERTO
+  PAGO
+  VENCIDO
+  CANCELADO
+}
+
+enum InspecaoTipo {
+  FUNDACAO
+  MONTAGEM_PRE_MOLDADO
+  ESTRUTURA
+  ALVENARIA
+  ELETRICA
+  HIDRAULICA
+  IMPERMEABILIZACAO
+  ACABAMENTO
+  COBERTURA
+  COMISSIONAMENTO
+}
+
+enum InspecaoResultado {
+  CONFORME
+  NAO_CONFORME
+}
+
+enum ItemResultado {
+  CONFORME
+  NAO_CONFORME
+  N_A
+}
+
+enum Severidade {
+  BAIXO
+  MEDIO
+  ALTO
+  CRITICO
+}
+
+enum NCStatus {
+  ABERTA
+  EM_EXECUCAO
+  VERIFICACAO
+  ENCERRADA
+}
+
+enum AcidenteTipo {
+  COM_AFASTAMENTO
+  SEM_AFASTAMENTO
+  QUASE_ACIDENTE
+  INCIDENTE
+}
+
+enum PecaTipo {
+  PILAR
+  VIGA
+  LAJE
+  PAINEL
+  OUTRO
+}
+
+enum PecaStatus {
+  MOLDADA
+  CURANDO
+  PRONTA
+  MONTADA
+  REPROVADA
+}
+
+enum NotificacaoCanal {
+  IN_APP
+  EMAIL
+  WHATSAPP
+  PUSH
+}
+
+// ============================================================
+// MODELS
+// ============================================================
+
+model Tenant {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  logoUrl      String?
+  primaryColor String   @default("#FF6B00")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users  User[]
+  obras  Obra[]
+  fornecedores Fornecedor[]
+  materiais Material[]
+  trabalhadores Trabalhador[]
+  equipes EquipeObra[]
+  notificacoes Notificacao[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  email        String   @unique
+  passwordHash String?
+  role         Role     @default(ENCARREGADO)
+  avatarUrl    String?
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  obrasEng     Obra[]   @relation("ObraEngenheiro")
+  obrasCliente Obra[]   @relation("ObraCliente")
+  rdoResponsavel RDO[]  @relation("RdoResponsavel")
+  notificacoes Notificacao[]
+  estoqueMovimentos EstoqueMovimento[] @relation("EstoqueResponsavel")
+  requisicoesSolicitante RequisicaoCompra[] @relation("ReqSolicitante")
+  requisicoesAprovador  RequisicaoCompra[] @relation("ReqAprovador")
+  ocorrenciasAbertura   Ocorrencia[]  @relation("OcorrenciaAbertura")
+  ocorrenciasEncerramento Ocorrencia[] @relation("OcorrenciaEncerramento")
+  inspecoesResponsavel  Inspecao[]    @relation("InspecaoResponsavel")
+  ncResponsavel         NaoConformidade[] @relation("NCResponsavel")
+  ddsResponsavel        DDS[]         @relation("DdsResponsavel")
+  documentosCreatedBy   Documento[]   @relation("DocumentoCreatedBy")
+  orcamentosCreatedBy   Orcamento[]   @relation("OrcamentoCreatedBy")
+  lancamentosCreatedBy  LancamentoFinanceiro[] @relation("LancamentoCreatedBy")
+  contratosCreatedBy    Contrato[]    @relation("ContratoCreatedBy")
+  medicoesCreatedBy     Medicao[]     @relation("MedicaoCreatedBy")
+  aprovadorEng          Medicao[]     @relation("MedicaoAprovadorEng")
+  aprovadorFin          Medicao[]     @relation("MedicaoAprovadorFin")
+  aprovadorCliente      Medicao[]     @relation("MedicaoAprovadorCliente")
+
+  @@index([tenantId])
+  @@index([email])
+}
+
+model Obra {
+  id              String      @id @default(cuid())
+  tenantId        String
+  nome            String
+  codigo          String      @unique
+  tipo            ObraTipo
+  endereco        String?
+  cidade          String?
+  estado          String?
+  latitude        Float?
+  longitude       Float?
+  valorContratado Decimal     @default(0) @db.Decimal(14,2)
+  dataInicio      DateTime?
+  dataPrevisaoFim DateTime?
+  dataConclusao   DateTime?
+  status          ObraStatus  @default(PLANEJAMENTO)
+  engenheiroId    String?
+  clienteId       String?
+  descricao       String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  engenheiro      User?       @relation("ObraEngenheiro", fields: [engenheiroId], references: [id])
+  cliente         User?       @relation("ObraCliente", fields: [clienteId], references: [id])
+  etapas          Etapa[]
+  rdos            RDO[]
+  orcamentos      Orcamento[]
+  medicoes        Medicao[]
+  documentos      Documento[]
+  ocorrencias     Ocorrencia[]
+  inspecoes       Inspecao[]
+  lancamentos     LancamentoFinanceiro[]
+  notasFiscais    NotaFiscal[]
+  contratos       Contrato[]
+  naoConformidades NaoConformidade[]
+  estoqueMovimentos EstoqueMovimento[]
+  requisicoes     RequisicaoCompra[]
+  presencas       Presenca[]
+  equipes         EquipeObra[]
+  fotos           Foto[]
+  pecaPreMoldadas PecaPreMoldada[]
+  dds             DDS[]
+  acidentes       Acidente[]
+  cronogramaVersoes CronogramaVersao[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([engenheiroId])
+}
+
+model Etapa {
+  id                String    @id @default(cuid())
+  obraId            String
+  nome              String
+  descricao         String?
+  dataInicio        DateTime?
+  dataFim           DateTime?
+  dataInicioReal    DateTime?
+  dataFimReal       DateTime?
+  percentualPrevisto Float    @default(0)
+  percentualRealizado Float   @default(0)
+  valorFinanceiro   Decimal   @default(0) @db.Decimal(14,2)
+  ordem             Int       @default(0)
+  cor               String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  obra              Obra      @relation(fields: [obraId], references: [id])
+  predecessoras     Predecessor[] @relation("EtapaSucessora")
+  sucessoras        Predecessor[] @relation("EtapaPredecessora")
+  rdoAtividades     RDOAtividade[]
+  medicaoItens      MedicaoItem[]
+  fotos             Foto[]
+  inspecoes         Inspecao[]
+  ocorrencias       Ocorrencia[]
+  naoConformidades  NaoConformidade[]
+  estoqueMovimentos EstoqueMovimento[]
+  orcamentoItens    OrcamentoItem[]
+  pecaPreMoldadas   PecaPreMoldada[]
+
+  @@index([obraId])
+}
+
+model Predecessor {
+  id              String          @id @default(cuid())
+  etapaId         String
+  predecessoraId  String
+  tipo            PredecessoraTipo @default(FIM_INICIO)
+  createdAt       DateTime        @default(now())
+
+  etapa           Etapa           @relation("EtapaSucessora", fields: [etapaId], references: [id])
+  predecessora    Etapa           @relation("EtapaPredecessora", fields: [predecessoraId], references: [id])
+
+  @@index([etapaId])
+  @@index([predecessoraId])
+}
+
+model RDO {
+  id               String        @id @default(cuid())
+  obraId           String
+  data             DateTime
+  numero           Int
+  climaManha       ClimaCondicao?
+  climaTarde       ClimaCondicao?
+  temperaturaManha Float?
+  temperaturaTarde Float?
+  responsavelId    String
+  assinaturaBase64 String?
+  assinaturaNome   String?
+  assinaturaCrea   String?
+  observacoes      String?
+  status           RdoStatus     @default(RASCUNHO)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  obra             Obra          @relation(fields: [obraId], references: [id])
+  responsavel      User          @relation("RdoResponsavel", fields: [responsavelId], references: [id])
+  climas           RDOClima[]
+  efetivos         RDOEfetivo[]
+  atividades       RDOAtividade[]
+  ocorrenciasRdo   RDOOcorrencia[]
+  equipamentos     RDOEquipamento[]
+  fotos            Foto[]
+  presencas        Presenca[]
+
+  @@unique([obraId, data])
+  @@index([obraId])
+  @@index([data])
+}
+
+model RDOClima {
+  id          String        @id @default(cuid())
+  rdoId       String
+  periodo     Periodo
+  condicao    ClimaCondicao
+  temperatura Float?
+  observacao  String?
+  createdAt   DateTime      @default(now())
+
+  rdo         RDO           @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+
+  @@index([rdoId])
+}
+
+model RDOEfetivo {
+  id                      String   @id @default(cuid())
+  rdoId                   String
+  funcao                  String
+  quantidadePresente      Int      @default(0)
+  quantidadeAusente       Int      @default(0)
+  quantidadeFaltaJustificada Int   @default(0)
+  createdAt               DateTime @default(now())
+
+  rdo                     RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+
+  @@index([rdoId])
+}
+
+model RDOAtividade {
+  id                String   @id @default(cuid())
+  rdoId             String
+  etapaId           String?
+  descricao         String
+  percentualExecutado Float  @default(0)
+  createdAt         DateTime @default(now())
+
+  rdo               RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  etapa             Etapa?   @relation(fields: [etapaId], references: [id])
+
+  @@index([rdoId])
+  @@index([etapaId])
+}
+
+model RDOOcorrencia {
+  id          String          @id @default(cuid())
+  rdoId       String
+  tipo        OcorrenciaTipo
+  descricao   String
+  createdAt   DateTime        @default(now())
+
+  rdo         RDO             @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+
+  @@index([rdoId])
+}
+
+model RDOEquipamento {
+  id              String   @id @default(cuid())
+  rdoId           String
+  equipamento     String
+  horasTrabalhadas Float   @default(0)
+  observacao      String?
+  createdAt       DateTime @default(now())
+
+  rdo             RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+
+  @@index([rdoId])
+}
+
+model Foto {
+  id         String   @id @default(cuid())
+  obraId     String
+  etapaId    String?
+  rdoId      String?
+  url        String
+  legenda    String?
+  data       DateTime @default(now())
+  tags       String?
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  obra       Obra     @relation(fields: [obraId], references: [id])
+  etapa      Etapa?   @relation(fields: [etapaId], references: [id])
+  rdo        RDO?     @relation(fields: [rdoId], references: [id])
+
+  @@index([obraId])
+  @@index([etapaId])
+  @@index([rdoId])
+}
+
+model Orcamento {
+  id              String          @id @default(cuid())
+  obraId          String
+  versao          Int             @default(1)
+  status          OrcamentoStatus @default(EM_ELABORACAO)
+  valorTotal      Decimal         @default(0) @db.Decimal(14,2)
+  bdi             Float           @default(30)
+  encargosSociais Float           @default(38.5)
+  justificativa   String?
+  createdBy       String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  obra            Obra            @relation(fields: [obraId], references: [id])
+  itens           OrcamentoItem[]
+  versoes         OrcamentoVersao[]
+  createdByUser   User?           @relation("OrcamentoCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([obraId])
+  @@index([status])
+}
+
+model OrcamentoItem {
+  id            String           @id @default(cuid())
+  orcamentoId   String
+  etapaId       String?
+  codigo        String
+  descricao     String
+  unidade       String
+  quantidade    Decimal          @default(0) @db.Decimal(10,2)
+  precoUnitario Decimal          @default(0) @db.Decimal(14,2)
+  custoTotal    Decimal          @default(0) @db.Decimal(14,2)
+  tipo          OrcamentoItemTipo @default(SERVICO)
+  composicao    String?
+  ordem         Int              @default(0)
+  createdAt     DateTime         @default(now())
+
+  orcamento     Orcamento        @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+  etapa         Etapa?           @relation(fields: [etapaId], references: [id])
+
+  @@index([orcamentoId])
+  @@index([etapaId])
+}
+
+model OrcamentoVersao {
+  id            String   @id @default(cuid())
+  orcamentoId   String
+  versao        Int
+  valorTotal    Decimal  @db.Decimal(14,2)
+  justificativa String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+
+  orcamento     Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+
+  @@index([orcamentoId])
+}
+
+model Fornecedor {
+  id           String   @id @default(cuid())
+  tenantId     String
+  razaoSocial  String
+  nomeFantasia String?
+  cnpj         String   @unique
+  ie           String?
+  endereco     String?
+  cidade       String?
+  estado       String?
+  telefone     String?
+  email        String?
+  contato      String?
+  categoria    String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  estoqueMovimentos EstoqueMovimento[]
+  contratos        Contrato[]
+  notasFiscais     NotaFiscal[]
+
+  @@index([tenantId])
+  @@index([cnpj])
+}
+
+model Material {
+  id            String   @id @default(cuid())
+  tenantId      String
+  codigo        String   @unique
+  descricao     String
+  unidade       String
+  estoqueMinimo Float    @default(0)
+  categoria     String?
+  precoMedio    Decimal  @default(0) @db.Decimal(14,2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  estoqueMovimentos EstoqueMovimento[]
+  requisicoes       RequisicaoCompra[]
+
+  @@index([tenantId])
+}
+
+model EstoqueMovimento {
+  id            String       @id @default(cuid())
+  obraId        String
+  materialId    String
+  fornecedorId  String?
+  tipo          MovimentoTipo
+  quantidade    Float
+  precoUnitario Decimal      @default(0) @db.Decimal(14,2)
+  nfNumero      String?
+  lote          String?
+  localizacao   String?
+  etapaId       String?
+  responsavelId String?
+  justificativa String?
+  data          DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+
+  obra          Obra         @relation(fields: [obraId], references: [id])
+  material      Material     @relation(fields: [materialId], references: [id])
+  fornecedor    Fornecedor?  @relation(fields: [fornecedorId], references: [id])
+  etapa         Etapa?       @relation(fields: [etapaId], references: [id])
+  responsavel   User?        @relation("EstoqueResponsavel", fields: [responsavelId], references: [id])
+
+  @@index([obraId])
+  @@index([materialId])
+  @@index([fornecedorId])
+}
+
+model RequisicaoCompra {
+  id             String           @id @default(cuid())
+  obraId         String
+  materialId     String
+  solicitanteId  String
+  quantidade     Float
+  justificativa  String?
+  status         RequisicaoStatus @default(PENDENTE)
+  aprovadorId    String?
+  dataSolicitacao DateTime        @default(now())
+  dataAprovacao  DateTime?
+  observacao     String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  obra           Obra             @relation(fields: [obraId], references: [id])
+  material       Material         @relation(fields: [materialId], references: [id])
+  solicitante    User             @relation("ReqSolicitante", fields: [solicitanteId], references: [id])
+  aprovador      User?            @relation("ReqAprovador", fields: [aprovadorId], references: [id])
+
+  @@index([obraId])
+  @@index([status])
+}
+
+model Trabalhador {
+  id              String      @id @default(cuid())
+  tenantId        String
+  nome            String
+  cpf             String
+  rg              String?
+  funcao          String
+  vinculo         VinculoTipo @default(CLT)
+  telefone        String?
+  email           String?
+  fotoUrl         String?
+  dataAdmissao    DateTime?
+  dataDemissao    DateTime?
+  subempreiteiroId String?
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  presencas       Presenca[]
+  epiEntregas     EPI[]
+  treinamentos    Treinamento[]
+  exames          ExameMedico[]
+  acidentesVitima Acidente[]  @relation("AcidenteVitima")
+  equipeMembros   EquipeMembro[]
+
+  @@index([tenantId])
+  @@index([cpf])
+}
+
+model EquipeObra {
+  id          String   @id @default(cuid())
+  tenantId    String
+  obraId      String
+  nome        String
+  lider       String?
+  especialidade String?
+  turno       String?
+  status      String   @default("ATIVA")
+  observacoes String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  obra        Obra     @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  membros     EquipeMembro[]
+
+  @@index([tenantId])
+  @@index([obraId])
+  @@index([status])
+}
+
+model EquipeMembro {
+  id             String   @id @default(cuid())
+  equipeId       String
+  trabalhadorId  String
+  funcaoNaEquipe String?
+  dataEntrada    DateTime @default(now())
+  dataSaida      DateTime?
+  ativo          Boolean  @default(true)
+  observacoes    String?
+  createdAt      DateTime @default(now())
+
+  equipe         EquipeObra @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  trabalhador    Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
+
+  @@unique([equipeId, trabalhadorId])
+  @@index([equipeId])
+  @@index([trabalhadorId])
+}
+
+model Presenca {
+  id              String    @id @default(cuid())
+  obraId          String
+  trabalhadorId   String
+  rdoId           String?
+  data            DateTime
+  presente        Boolean   @default(false)
+  horasTrabalhadas Float    @default(0)
+  horasExtras     Float     @default(0)
+  createdAt       DateTime  @default(now())
+
+  obra            Obra      @relation(fields: [obraId], references: [id])
+  trabalhador     Trabalhador @relation(fields: [trabalhadorId], references: [id])
+  rdo             RDO?      @relation(fields: [rdoId], references: [id])
+
+  @@unique([obraId, trabalhadorId, data])
+  @@index([obraId])
+  @@index([trabalhadorId])
+  @@index([data])
+}
+
+model EPI {
+  id               String   @id @default(cuid())
+  trabalhadorId    String
+  tipo             String
+  descricao        String
+  ca               String?
+  quantidade       Int      @default(1)
+  dataEntrega      DateTime @default(now())
+  validade         DateTime?
+  assinaturaBase64 String?
+  createdAt        DateTime @default(now())
+
+  trabalhador      Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
+
+  @@index([trabalhadorId])
+}
+
+model Treinamento {
+  id             String  @id @default(cuid())
+  trabalhadorId  String
+  nr             NrTipo
+  descricao      String
+  dataRealizacao DateTime
+  validade       DateTime?
+  certificadoUrl String?
+  createdAt      DateTime @default(now())
+
+  trabalhador    Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
+
+  @@index([trabalhadorId])
+}
+
+model ExameMedico {
+  id              String       @id @default(cuid())
+  trabalhadorId   String
+  tipo            ExameTipo
+  dataRealizacao  DateTime
+  validade        DateTime?
+  resultado       ExameResultado @default(APTO)
+  arquivoUrl      String?
+  createdAt       DateTime     @default(now())
+
+  trabalhador     Trabalhador  @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
+
+  @@index([trabalhadorId])
+}
+
+model Contrato {
+  id           String         @id @default(cuid())
+  obraId       String
+  fornecedorId String
+  numero       String
+  objeto       String
+  tipo         ContratoTipo
+  valor        Decimal        @default(0) @db.Decimal(14,2)
+  valorAditivo Decimal        @default(0) @db.Decimal(14,2)
+  dataInicio   DateTime
+  dataFim      DateTime
+  status       ContratoStatus @default(EM_NEGOCIACAO)
+  arquivoUrl   String?
+  alertaDias   Int            @default(30)
+  observacoes  String?
+  createdBy    String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  obra            Obra            @relation(fields: [obraId], references: [id])
+  fornecedor      Fornecedor      @relation(fields: [fornecedorId], references: [id])
+  pagamentos      ContratoPagamento[]
+  createdByUser   User?           @relation("ContratoCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([obraId])
+  @@index([fornecedorId])
+  @@index([status])
+}
+
+model ContratoPagamento {
+  id                    String          @id @default(cuid())
+  contratoId            String
+  lancamentoFinanceiroId String?
+  valor                 Decimal         @default(0) @db.Decimal(14,2)
+  dataVencimento        DateTime
+  dataPagamento         DateTime?
+  status                PagamentoStatus @default(ABERTO)
+  nfNumero              String?
+  observacao            String?
+  createdAt             DateTime        @default(now())
+
+  contrato              Contrato        @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@index([contratoId])
+  @@index([status])
+}
+
+model Documento {
+  id                    String             @id @default(cuid())
+  obraId                String
+  categoria             DocumentoCategoria
+  nome                  String
+  numero                String?
+  profissionalResponsavel String?
+  dataEmissao           DateTime?
+  validade              DateTime?
+  status                DocumentoStatus    @default(PENDENTE)
+  arquivoUrl            String?
+  accessHash            String?            @unique
+  descricao             String?
+  createdBy             String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  obra                  Obra               @relation(fields: [obraId], references: [id])
+  createdByUser         User?              @relation("DocumentoCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([obraId])
+  @@index([categoria])
+  @@index([status])
+}
+
+model Medicao {
+  id               String         @id @default(cuid())
+  obraId           String
+  numero           Int
+  periodoInicio    DateTime
+  periodoFim       DateTime
+  valorTotal       Decimal        @default(0) @db.Decimal(14,2)
+  status           MedicaoStatus  @default(EM_ELABORACAO)
+  createdBy        String?
+  aprovadorEngId   String?
+  aprovadorFinId   String?
+  aprovadorClienteId String?
+  dataAprovacao    DateTime?
+  observacao       String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  obra             Obra           @relation(fields: [obraId], references: [id])
+  itens            MedicaoItem[]
+  createdByUser    User?          @relation("MedicaoCreatedBy", fields: [createdBy], references: [id])
+  aprovadorEng     User?          @relation("MedicaoAprovadorEng", fields: [aprovadorEngId], references: [id])
+  aprovadorFin     User?          @relation("MedicaoAprovadorFin", fields: [aprovadorFinId], references: [id])
+  aprovadorCliente User?          @relation("MedicaoAprovadorCliente", fields: [aprovadorClienteId], references: [id])
+
+  @@unique([obraId, numero])
+  @@index([obraId])
+  @@index([status])
+}
+
+model MedicaoItem {
+  id              String   @id @default(cuid())
+  medicaoId       String
+  etapaId         String
+  percentualMedido Float  @default(0)
+  valorMedido     Decimal  @default(0) @db.Decimal(14,2)
+  observacao      String?
+  createdAt       DateTime @default(now())
+
+  medicao         Medicao  @relation(fields: [medicaoId], references: [id], onDelete: Cascade)
+  etapa           Etapa    @relation(fields: [etapaId], references: [id])
+
+  @@index([medicaoId])
+  @@index([etapaId])
+}
+
+model LancamentoFinanceiro {
+  id             String          @id @default(cuid())
+  obraId         String
+  tipo           LancamentoTipo
+  categoria      String?
+  descricao      String
+  valor          Decimal         @db.Decimal(14,2)
+  dataVencimento DateTime
+  dataPagamento  DateTime?
+  status         LancamentoStatus @default(ABERTO)
+  centroCusto    String?
+  fornecedorId   String?
+  medicaoId      String?
+  nfNumero       String?
+  createdBy      String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  obra           Obra            @relation(fields: [obraId], references: [id])
+  createdByUser  User?           @relation("LancamentoCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([obraId])
+  @@index([tipo])
+  @@index([status])
+  @@index([dataVencimento])
+}
+
+model NotaFiscal {
+  id                   String   @id @default(cuid())
+  obraId               String
+  fornecedorId         String
+  lancamentoFinanceiroId String?
+  numero               String
+  dataEmissao          DateTime
+  valor                Decimal  @db.Decimal(14,2)
+  cnpjEmitente         String
+  descricao            String?
+  arquivoUrl           String?
+  createdAt            DateTime @default(now())
+
+  obra                 Obra     @relation(fields: [obraId], references: [id])
+  fornecedor           Fornecedor @relation(fields: [fornecedorId], references: [id])
+
+  @@index([obraId])
+  @@index([fornecedorId])
+}
+
+model Ocorrencia {
+  id                     String            @id @default(cuid())
+  obraId                 String
+  etapaId                String?
+  tipo                   OcorrenciaGeralTipo
+  descricao              String
+  impactoDias            Int               @default(0)
+  responsavelAberturaId  String?
+  responsavelEncerramentoId String?
+  resolucao              String?
+  status                 OcorrenciaStatus  @default(ABERTO)
+  dataAbertura           DateTime          @default(now())
+  dataEncerramento       DateTime?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  obra                   Obra              @relation(fields: [obraId], references: [id])
+  etapa                  Etapa?            @relation(fields: [etapaId], references: [id])
+  responsavelAbertura    User?             @relation("OcorrenciaAbertura", fields: [responsavelAberturaId], references: [id])
+  responsavelEncerramento User?            @relation("OcorrenciaEncerramento", fields: [responsavelEncerramentoId], references: [id])
+
+  @@index([obraId])
+  @@index([status])
+}
+
+model Inspecao {
+  id            String           @id @default(cuid())
+  obraId        String
+  etapaId       String
+  tipo          InspecaoTipo
+  responsavelId String
+  data          DateTime         @default(now())
+  resultado     InspecaoResultado
+  observacao    String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  obra          Obra             @relation(fields: [obraId], references: [id])
+  etapa         Etapa            @relation(fields: [etapaId], references: [id])
+  responsavel   User             @relation("InspecaoResponsavel", fields: [responsavelId], references: [id])
+  itens         InspecaoItem[]
+  naoConformidades NaoConformidade[]
+
+  @@index([obraId])
+  @@index([etapaId])
+}
+
+model InspecaoItem {
+  id          String        @id @default(cuid())
+  inspecaoId  String
+  descricao   String
+  resultado   ItemResultado
+  observacao  String?
+  fotoUrl     String?
+  createdAt   DateTime      @default(now())
+
+  inspecao    Inspecao      @relation(fields: [inspecaoId], references: [id], onDelete: Cascade)
+
+  @@index([inspecaoId])
+}
+
+model NaoConformidade {
+  id              String     @id @default(cuid())
+  inspecaoId      String?
+  obraId          String
+  etapaId         String?
+  descricao       String
+  causaRaiz       String?
+  severidade      Severidade @default(MEDIO)
+  responsavelId   String?
+  prazo           DateTime?
+  acaoCorretiva   String?
+  status          NCStatus   @default(ABERTA)
+  fotoAntesUrl    String?
+  fotoDepoisUrl   String?
+  dataEncerramento DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  inspecao        Inspecao?  @relation(fields: [inspecaoId], references: [id])
+  obra            Obra       @relation(fields: [obraId], references: [id])
+  etapa           Etapa?     @relation(fields: [etapaId], references: [id])
+  responsavel     User?      @relation("NCResponsavel", fields: [responsavelId], references: [id])
+
+  @@index([obraId])
+  @@index([status])
+  @@index([severidade])
+}
+
+model DDS {
+  id            String   @id @default(cuid())
+  obraId        String
+  tema          String
+  participantes String?
+  responsavelId String
+  data          DateTime @default(now())
+  assinaturas   Json?
+  createdAt     DateTime @default(now())
+
+  obra          Obra     @relation(fields: [obraId], references: [id])
+  responsavel   User     @relation("DdsResponsavel", fields: [responsavelId], references: [id])
+
+  @@index([obraId])
+}
+
+model Acidente {
+  id             String        @id @default(cuid())
+  obraId         String
+  tipo           AcidenteTipo
+  dataHora       DateTime
+  local          String?
+  descricao      String
+  vitimaId       String?
+  testemunhas    String?
+  causaRaiz      String?
+  acaoPreventiva String?
+  catAberto      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  obra           Obra          @relation(fields: [obraId], references: [id])
+  vitima         Trabalhador?  @relation("AcidenteVitima", fields: [vitimaId], references: [id])
+
+  @@index([obraId])
+  @@index([tipo])
+}
+
+model PecaPreMoldada {
+  id              String     @id @default(cuid())
+  obraId          String
+  etapaId         String?
+  numeroSerie     String     @unique
+  tipo            PecaTipo
+  dataConcretagem DateTime?
+  dataMontagem    DateTime?
+  localizacao     String?
+  fckProjeto      Float?
+  fckResultado7d  Float?
+  fckResultado28d Float?
+  status          PecaStatus @default(MOLDADA)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  obra            Obra       @relation(fields: [obraId], references: [id])
+  etapa           Etapa?     @relation(fields: [etapaId], references: [id])
+
+  @@index([obraId])
+  @@index([etapaId])
+  @@index([numeroSerie])
+  @@index([status])
+}
+
+model Notificacao {
+  id        String            @id @default(cuid())
+  tenantId  String
+  userId    String
+  tipo      String
+  titulo    String
+  mensagem  String
+  lida      Boolean           @default(false)
+  canal     NotificacaoCanal
+  dataEnvio DateTime?
+  createdAt DateTime          @default(now())
+
+  tenant    Tenant            @relation(fields: [tenantId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([lida])
+  @@index([tenantId])
+}
+
+model CronogramaVersao {
+  id           String   @id @default(cuid())
+  obraId       String
+  versao       Int
+  dataAprovacao DateTime?
+  aprovadoPor  String?
+  justificativa String?
+  baseline     Json?
+  createdAt    DateTime @default(now())
+
+  obra         Obra     @relation(fields: [obraId], references: [id])
+
+  @@index([obraId])
+}

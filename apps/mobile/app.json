@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "ObrasAWC",
+    "slug": "obras-awc",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#1E2832",
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.awc.obras" },
+    "android": {
+      "package": "com.awc.obras",
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]
+    },
+    "plugins": [
+      ["expo-image-picker", { "cameraPermission": "O ObrasAWC usa a câmera para registrar fotos da obra." }],
+      "expo-secure-store"
+    ],
+    "extra": { "apiUrl": "http://10.0.2.2:3000/api" }
+  }
+}
