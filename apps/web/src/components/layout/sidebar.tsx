@@ -30,19 +30,22 @@ export function Sidebar({ mobile = false, onNavigate }: { mobile?: boolean; onNa
   const filteredNav = sidebarNav.filter((item) => item.roles.includes(userRole));
 
   return (
-    <aside className={cn("fixed left-0 top-0 z-40 flex h-screen w-[253px] flex-col overflow-hidden border-r border-white/10 bg-[#0b1a25] text-white shadow-[8px_0_28px_rgba(5,14,22,.16)]", mobile && "relative h-full")}>
-      <div className="flex h-16 items-center border-b border-white/10 px-8">
-        <div className="text-[28px] font-black leading-none tracking-[-.08em]"><span>Obras</span><span className="text-[#ff5a00]">AWC</span></div>
-      </div>
-
-      <div className="flex h-[96px] shrink-0 items-center px-8">
-        <div>
-          <div className="text-[42px] font-black leading-[.78] tracking-[-.08em] text-white">AWC</div>
-          <div className="mt-2 text-[10px] font-black uppercase tracking-[.38em] text-white/80">Pré Moldados</div>
+    <aside className={cn("fixed left-0 top-0 z-40 flex h-screen w-[253px] flex-col overflow-hidden border-r border-slate-900/50 bg-[#060c13] text-white shadow-[10px_0_30px_rgba(0,0,0,0.25)]", mobile && "relative h-full")}>
+      <div className="flex h-16 items-center border-b border-slate-900/40 px-6">
+        <div className="text-[24px] font-black leading-none tracking-[-.06em]">
+          <span className="text-white">Obras</span>
+          <span className="text-[#ff5a00]">AWC</span>
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-2 scrollbar-thin">
+      <div className="flex h-[76px] shrink-0 items-center px-6">
+        <div>
+          <div className="text-[32px] font-black leading-[.8] tracking-[-.07em] text-white">AWC</div>
+          <div className="mt-1.5 text-[9px] font-black uppercase tracking-[0.45em] text-[#ff5a00]">Pré Moldados</div>
+        </div>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5 scrollbar-thin">
         {filteredNav.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
@@ -53,29 +56,31 @@ export function Sidebar({ mobile = false, onNavigate }: { mobile?: boolean; onNa
               title={item.title}
               onClick={onNavigate}
               className={cn(
-                "group relative flex h-[44px] items-center gap-4 px-6 text-[15px] font-medium transition",
-                active ? "bg-white/[.055] text-[#ff5a00]" : "text-white/90 hover:bg-white/[.045] hover:text-white"
+                "group relative flex h-[42px] items-center gap-3.5 rounded-lg px-4 text-[14px] font-semibold transition-all duration-200",
+                active 
+                  ? "bg-gradient-to-r from-[#ff5a00]/12 to-[#ff5a00]/2 text-[#ff5a00]" 
+                  : "text-slate-400 hover:bg-white/[0.04] hover:text-white"
               )}
             >
-              <span className={cn("absolute left-0 top-0 h-full w-1 bg-transparent", active && "bg-[#ff5a00]")} />
-              <Icon className={cn("h-[21px] w-[21px] shrink-0 stroke-[1.8]", active ? "text-[#ff5a00]" : "text-white/92")} />
+              {active && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#ff5a00]" />}
+              <Icon className={cn("h-[19px] w-[19px] shrink-0 stroke-[2] transition-colors", active ? "text-[#ff5a00]" : "text-slate-400 group-hover:text-white")} />
               <span className="truncate">{item.title}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-white/10 p-5">
-        <Link href="/configuracoes" title="Minha conta e configurações" onClick={onNavigate} className="flex items-center gap-3 rounded-md p-1 transition hover:bg-white/[.06]">
-          <Avatar className="h-11 w-11 border border-white/20">
+      <div className="border-t border-slate-900/40 p-4 bg-[#04080d]/60">
+        <Link href="/configuracoes" title="Minha conta e configurações" onClick={onNavigate} className="flex items-center gap-3 rounded-xl p-2 transition-all duration-200 hover:bg-white/[0.05]">
+          <Avatar className="h-10 w-10 border border-slate-800 ring-2 ring-[#ff5a00]/10">
             <AvatarImage src={(user as any)?.avatarUrl} />
-            <AvatarFallback className="bg-[#ff5a00] text-[13px] font-bold text-white">{initials(user?.name)}</AvatarFallback>
+            <AvatarFallback className="bg-gradient-to-br from-[#ff5a00] to-[#ff7a1a] text-[12px] font-black text-white">{initials(user?.name)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1 text-left">
-            <p className="truncate text-[14px] font-bold leading-tight">{user?.name || "Usuário"}</p>
-            <p className="mt-1 truncate text-[12px] text-white/65">{roleLabel[userRole] || userRole}</p>
+            <p className="truncate text-[13px] font-bold leading-tight text-slate-100">{user?.name || "Usuário"}</p>
+            <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-400">{roleLabel[userRole] || userRole}</p>
           </div>
-          <Settings className="h-4 w-4 shrink-0 text-white/60" />
+          <Settings className="h-4 w-4 shrink-0 text-slate-500 hover:text-slate-350 transition-colors" />
         </Link>
       </div>
     </aside>

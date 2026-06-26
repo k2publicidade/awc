@@ -14,22 +14,24 @@ const money = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
 const toneMap: Record<string, string> = {
-  orange: "bg-orange-50 text-awc-orange border-orange-100",
-  success: "bg-green-100 text-green-800 border-green-100",
-  warning: "bg-white text-amber-700 ring-1 ring-amber-200 border-amber-100",
-  danger: "bg-red-50 text-awc-danger border-red-100",
-  info: "bg-blue-50 text-awc-info border-blue-100",
+  orange: "bg-orange-50 text-[#ff4d00] border-orange-100/80 ring-[#ff4d00]/5",
+  success: "bg-emerald-50 text-emerald-600 border-emerald-100/80 ring-emerald-600/5",
+  warning: "bg-amber-50 text-amber-600 border-amber-100/80 ring-amber-600/5",
+  danger: "bg-red-50 text-red-600 border-red-100/80 ring-red-650/5",
+  info: "bg-blue-50 text-blue-600 border-blue-100/80 ring-blue-650/5",
 };
 
 function StatCard({ label, value, hint, icon: Icon, tone = "orange" }: { label: string; value: string; hint: string; icon: React.ElementType; tone?: string }) {
   return (
-    <div className="awc-card p-4">
+    <div className="awc-card awc-card-interactive p-5 bg-white border-slate-200/50 shadow-sm shadow-slate-100/30">
       <div className="flex items-center gap-4">
-        <div className={cn("flex h-14 w-14 items-center justify-center rounded-full border", toneMap[tone])}><Icon className="h-7 w-7" /></div>
-        <div>
-          <p className="awc-title text-sm">{label}</p>
-          <p className={cn("text-3xl font-bold leading-tight", toneMap[tone]?.split(" ")[1])}>{value}</p>
-          <p className="text-xs text-slate-500">{hint}</p>
+        <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border", toneMap[tone])}>
+          <Icon className="h-6 w-6 stroke-[2]" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-450">{label}</p>
+          <p className="text-2xl font-black leading-tight text-slate-900 tracking-tight mt-0.5">{value}</p>
+          <p className="text-[11.5px] font-medium text-slate-400 truncate mt-0.5">{hint}</p>
         </div>
       </div>
     </div>
@@ -88,17 +90,17 @@ export default async function DashboardPage() {
   const riscoDe = (o: ObraRow) => (temEtapaAtrasada(o) ? "Atrasada" : avanco(o) < previsto(o) - 10 ? "Atenção" : "No prazo");
 
   return (
-    <div className="mx-auto w-full max-w-[1540px] space-y-5 pb-8">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto w-full max-w-[1540px] space-y-6 pb-8 text-[#1e293b]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="mb-2 text-xs font-medium text-slate-500">ObrasAWC <span className="text-awc-orange">›</span> Dashboard</div>
-          <h1 className="awc-title text-3xl leading-none">Dashboard Executivo</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Visão geral de todas as obras — {hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">ObrasAWC <span className="mx-1 text-[#ff5a00]">›</span> Dashboard</div>
+          <h1 className="awc-title text-[28px] font-black leading-none tracking-tight text-slate-900">Dashboard Executivo</h1>
+          <p className="mt-1.5 text-xs font-semibold text-slate-500">
+            Visão geral de todas as obras — <span className="capitalize">{hoje.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</span>
           </p>
         </div>
-        <Link href="/obras/novo" className="inline-flex h-9 items-center rounded-md bg-gradient-to-br from-[#ff4d00] to-[#ff7a1a] px-4 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(255,77,0,.22)] transition hover:brightness-95">
-          <Plus className="mr-2 h-4 w-4" />Nova obra
+        <Link href="/obras/novo" className="awc-btn-primary flex h-10 items-center justify-center rounded-lg px-5 text-sm font-bold text-white transition-all shadow-md">
+          <Plus className="mr-2 h-4.5 w-4.5" />Nova obra
         </Link>
       </div>
 
@@ -116,42 +118,54 @@ export default async function DashboardPage() {
         <StatCard label="Medições pendentes" value={String(medicoesPendentes)} hint="Aguardando aprovação" icon={FileText} tone={medicoesPendentes > 0 ? "warning" : "success"} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_.8fr]">
-        <div className="awc-card p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="awc-title text-xl">Obras em andamento</h2>
-            <Link href="/obras" className="text-sm font-semibold text-awc-orange">Ver todas</Link>
+      <div className="grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+        <div className="awc-card p-6 bg-white border-slate-200/50 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-lg font-black uppercase text-slate-800 tracking-tight">Obras em andamento</h2>
+            <Link href="/obras" className="text-xs font-bold uppercase tracking-wider text-[#ff5a00] hover:underline">Ver todas</Link>
           </div>
           {ativas.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-500">Nenhuma obra em andamento. <Link href="/obras/novo" className="font-semibold text-awc-orange">Cadastre uma obra</Link>.</p>
+            <p className="py-10 text-center text-[13px] text-slate-400 font-medium">Nenhuma obra em andamento. <Link href="/obras/novo" className="font-semibold text-awc-orange hover:underline">Cadastre uma obra</Link>.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b bg-slate-50 text-xs uppercase text-slate-500">
-                  <tr><th className="px-3 py-3">Obra</th><th className="px-3 py-3">Engenheiro</th><th className="px-3 py-3">Prazo</th><th className="px-3 py-3">Avanço</th><th className="px-3 py-3">Situação</th></tr>
+            <div className="overflow-x-auto -mx-6">
+              <table className="w-full text-left text-[13.5px]">
+                <thead className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="px-6 py-3.5">Obra</th>
+                    <th className="px-4 py-3.5">Engenheiro</th>
+                    <th className="px-4 py-3.5">Prazo</th>
+                    <th className="px-4 py-3.5">Avanço</th>
+                    <th className="px-6 py-3.5">Situação</th>
+                  </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {ativas.map((o) => {
                     const risco = riscoDe(o);
                     const pct = Math.round(avanco(o));
                     return (
-                      <tr key={o.id} className="border-b last:border-0 hover:bg-slate-50">
-                        <td className="px-3 py-3">
-                          <Link href={`/obras/${o.id}`} className="font-semibold text-slate-900 hover:text-awc-orange">{o.nome}</Link>
-                          <p className="text-xs text-slate-500">{o.codigo}{o.cidade ? ` · ${o.cidade}/${o.estado || ""}` : ""}</p>
+                      <tr key={o.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <Link href={`/obras/${o.id}`} className="font-bold text-slate-900 hover:text-[#ff5a00] transition-colors">{o.nome}</Link>
+                          <p className="text-[11.5px] font-medium text-slate-450 mt-0.5">{o.codigo}{o.cidade ? ` · ${o.cidade}/${o.estado || ""}` : ""}</p>
                         </td>
-                        <td className="px-3 py-3 text-slate-600">{o.engenheiro?.name || "—"}</td>
-                        <td className="px-3 py-3 text-slate-600">{o.dataPrevisaoFim ? o.dataPrevisaoFim.toLocaleDateString("pt-BR", { month: "short", year: "numeric" }) : "—"}</td>
-                        <td className="px-3 py-3">
-                          <div className="flex min-w-[130px] items-center gap-2">
-                            <div className="h-2 w-full rounded-full bg-slate-100">
-                              <div className={cn("h-2 rounded-full", risco === "Atrasada" ? "bg-awc-danger" : "bg-awc-orange")} style={{ width: `${Math.min(pct, 100)}%` }} />
+                        <td className="px-4 py-4 text-slate-600 font-medium">{o.engenheiro?.name || "—"}</td>
+                        <td className="px-4 py-4 text-slate-655 font-semibold text-xs uppercase">{o.dataPrevisaoFim ? o.dataPrevisaoFim.toLocaleDateString("pt-BR", { month: "short", year: "numeric" }) : "—"}</td>
+                        <td className="px-4 py-4">
+                          <div className="flex min-w-[130px] items-center gap-2.5">
+                            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                              <div className={cn("h-2 rounded-full transition-all duration-500", risco === "Atrasada" ? "bg-red-500" : "bg-gradient-to-r from-[#ff5a00] to-[#ff8c00]")} style={{ width: `${Math.min(pct, 100)}%` }} />
                             </div>
-                            <span className="w-9 text-xs font-bold">{pct}%</span>
+                            <span className="w-8 text-[11.5px] font-black text-slate-700 text-right">{pct}%</span>
                           </div>
                         </td>
-                        <td className="px-3 py-3">
-                          <span className={cn("inline-flex rounded-md px-2 py-1 text-xs font-bold", risco === "Atrasada" ? "bg-red-50 text-awc-danger" : risco === "Atenção" ? "bg-white text-amber-700 ring-1 ring-amber-200" : "bg-green-100 text-green-800")}>{risco}</span>
+                        <td className="px-6 py-4">
+                          <span className={cn("inline-flex rounded-lg px-2.5 py-1 text-[11px] font-black border", 
+                            risco === "Atrasada" ? "bg-red-50/50 text-red-650 border-red-100" : 
+                            risco === "Atenção" ? "bg-amber-50/50 text-amber-650 border-amber-100" : 
+                            "bg-emerald-50/50 text-emerald-650 border-emerald-100"
+                          )}>
+                            {risco}
+                          </span>
                         </td>
                       </tr>
                     );
@@ -162,22 +176,22 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div className="space-y-4">
-          <div className="awc-card p-5">
+        <div className="space-y-5">
+          <div className="awc-card p-6 bg-white border-slate-200/50 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="awc-title text-xl">Alertas</h2>
-              <Link href="/notificacoes" className="text-sm font-semibold text-awc-orange">Ver todos</Link>
+              <h2 className="text-sm font-black uppercase text-slate-800 tracking-tight">Alertas</h2>
+              <Link href="/notificacoes" className="text-xs font-bold uppercase tracking-wider text-[#ff5a00] hover:underline">Ver todos</Link>
             </div>
             {notificacoes.length === 0 ? (
-              <p className="py-4 text-center text-sm text-slate-500">Nenhum alerta pendente. ✅</p>
+              <p className="py-6 text-center text-[12.5px] text-slate-400 font-medium">Nenhum alerta pendente. ✅</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {notificacoes.map((n) => (
-                  <div key={n.id} className="flex items-center gap-3 rounded-xl border p-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-amber-700 ring-1 ring-amber-200"><Bell className="h-4 w-4" /></div>
+                  <div key={n.id} className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/30 p-3 hover:bg-slate-50/70 transition-colors">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100/50 mt-0.5"><Bell className="h-4 w-4 stroke-[2]" /></div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{n.titulo}</p>
-                      <p className="truncate text-xs text-slate-500">{n.mensagem}</p>
+                      <p className="font-bold text-[13px] text-slate-900 truncate">{n.titulo}</p>
+                      <p className="text-[11.5px] font-medium text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{n.mensagem}</p>
                     </div>
                   </div>
                 ))}
@@ -185,17 +199,33 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <div className="awc-card p-5">
-            <h2 className="awc-title mb-4 text-xl">Hoje na operação</h2>
+          <div className="awc-card p-6 bg-white border-slate-200/50 shadow-sm">
+            <h2 className="text-sm font-black uppercase text-slate-800 tracking-tight mb-4">Hoje na operação</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <Link href="/rdo" className="rounded-xl border p-3 hover:bg-slate-50"><p className="text-2xl font-bold text-awc-orange">{rdosHoje}</p><p className="text-xs text-slate-500">RDOs preenchidos hoje</p></Link>
-              <Link href="/ocorrencias" className="rounded-xl border p-3 hover:bg-slate-50"><p className={cn("text-2xl font-bold", ocorrenciasAbertas > 0 ? "text-awc-danger" : "text-green-700")}>{ocorrenciasAbertas}</p><p className="text-xs text-slate-500">Ocorrências abertas</p></Link>
-              <Link href="/qualidade" className="rounded-xl border p-3 hover:bg-slate-50"><p className={cn("text-2xl font-bold", ncsAbertas > 0 ? "text-amber-600" : "text-green-700")}>{ncsAbertas}</p><p className="text-xs text-slate-500">NCs em aberto</p></Link>
-              <Link href="/documentos" className="rounded-xl border p-3 hover:bg-slate-50"><p className={cn("text-2xl font-bold", docsVencendo > 0 ? "text-amber-600" : "text-green-700")}>{docsVencendo}</p><p className="text-xs text-slate-500">Docs vencendo em 30d</p></Link>
+              <Link href="/rdo" className="awc-card-interactive rounded-xl border border-slate-100 bg-slate-50/20 p-3.5 hover:bg-slate-50/80">
+                <p className="text-2xl font-black text-[#ff5a00] tracking-tight">{rdosHoje}</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-1">RDOs hoje</p>
+              </Link>
+              <Link href="/ocorrencias" className="awc-card-interactive rounded-xl border border-slate-100 bg-slate-50/20 p-3.5 hover:bg-slate-50/80">
+                <p className={cn("text-2xl font-black tracking-tight", ocorrenciasAbertas > 0 ? "text-red-500" : "text-emerald-600")}>{ocorrenciasAbertas}</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-1">Ocorrências</p>
+              </Link>
+              <Link href="/qualidade" className="awc-card-interactive rounded-xl border border-slate-100 bg-slate-50/20 p-3.5 hover:bg-slate-50/80">
+                <p className={cn("text-2xl font-black tracking-tight", ncsAbertas > 0 ? "text-amber-500" : "text-emerald-600")}>{ncsAbertas}</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-1">NCs em Aberto</p>
+              </Link>
+              <Link href="/documentos" className="awc-card-interactive rounded-xl border border-slate-100 bg-slate-50/20 p-3.5 hover:bg-slate-50/80">
+                <p className={cn("text-2xl font-black tracking-tight", docsVencendo > 0 ? "text-amber-500" : "text-emerald-600")}>{docsVencendo}</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mt-1">Docs a Vencer</p>
+              </Link>
             </div>
-            <div className="mt-4 flex gap-2">
-              <Link href="/rdo/novo" className="flex-1 rounded-md bg-awc-orange px-3 py-2 text-center text-sm font-semibold text-white hover:brightness-95"><FileText className="mr-1 inline h-4 w-4" />Novo RDO</Link>
-              <Link href="/seguranca" className="flex-1 rounded-md border px-3 py-2 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"><ShieldCheck className="mr-1 inline h-4 w-4" />Segurança</Link>
+            <div className="mt-4 flex gap-3">
+              <Link href="/rdo/novo" className="awc-btn-primary flex-1 h-10 flex items-center justify-center rounded-lg text-[13px] font-bold text-white shadow-md">
+                <FileText className="mr-1.5 h-4 w-4" />Novo RDO
+              </Link>
+              <Link href="/seguranca" className="flex-1 h-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-[13px] font-bold text-slate-655 hover:bg-slate-50 transition-colors">
+                <ShieldCheck className="mr-1.5 h-4 w-4 text-[#ff5a00]" />Segurança
+              </Link>
             </div>
           </div>
         </div>

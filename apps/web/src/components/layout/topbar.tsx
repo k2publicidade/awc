@@ -53,43 +53,43 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-black/25 bg-[#0a1721] px-4 text-white shadow-[0_2px_10px_rgba(5,14,22,.16)] sm:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 text-slate-850 backdrop-blur-md shadow-[0_2px_12px_rgba(0,0,0,0.015)] sm:px-8">
       <div className="flex min-w-0 flex-1 items-center gap-6">
-        <Button variant="ghost" size="icon" className="h-9 w-9 text-white/85 hover:bg-white/10 hover:text-white lg:hidden" onClick={onMenuClick} aria-label="Abrir menu"><Menu className="h-5 w-5" /></Button>
-        <div className="relative hidden w-full max-w-[477px] md:block">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/55" />
+        <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-655 hover:bg-slate-100 hover:text-slate-900 lg:hidden" onClick={onMenuClick} aria-label="Abrir menu"><Menu className="h-5 w-5" /></Button>
+        <div className="relative hidden w-full max-w-[440px] md:block">
+          <Search className="absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-400" />
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submitSearch()}
-            className="h-10 w-full rounded-[4px] border border-white/16 bg-[#101f2b] pl-12 pr-4 text-[14px] text-white placeholder:text-white/54 outline-none transition focus:border-[#ff5a00]"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50/50 pl-11 pr-4 text-[13.5px] text-slate-800 placeholder:text-slate-400 outline-none transition-all focus:border-[#ff5a00] focus:bg-white focus:ring-4 focus:ring-[#ff5a00]/10"
             placeholder={`Buscar em ${targetLabel}... (Enter)`}
             aria-label={`Buscar em ${targetLabel}`}
           />
         </div>
       </div>
-      <div className="flex items-center gap-5">
-        <Link href="/notificacoes" title="Notificações" className="relative rounded p-1.5 text-white/82 hover:bg-white/10">
-          <Bell className="h-5 w-5" />
+      <div className="flex items-center gap-4">
+        <Link href="/notificacoes" title="Notificações" className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-850 transition-colors">
+          <Bell className="h-5 w-5 stroke-[2]" />
           {naoLidas > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#ff5a00] text-[10px] font-black text-white">{naoLidas > 9 ? "9+" : naoLidas}</span>
+            <span className="absolute right-1 top-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-[#ff5a00] text-[9px] font-black text-white ring-2 ring-white">{naoLidas > 9 ? "9+" : naoLidas}</span>
           )}
         </Link>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex h-10 items-center gap-3 border-l border-white/12 pl-5" aria-label="Menu da conta">
-              <Avatar className="h-10 w-10 border border-white/20"><AvatarImage src={(user as any)?.avatarUrl} /><AvatarFallback className="bg-[#ff5a00] text-[12px] font-bold text-white">{initials(user?.name)}</AvatarFallback></Avatar>
-              <div className="hidden text-left md:block"><p className="text-[13px] font-bold leading-none">{user?.name || "Usuário"}</p></div>
-              <ChevronDown className="h-4 w-4 text-white/70" />
+            <button className="flex h-10 items-center gap-2.5 border-l border-slate-200/80 pl-4 cursor-pointer focus:outline-none" aria-label="Menu da conta">
+              <Avatar className="h-9 w-9 border border-slate-250"><AvatarImage src={(user as any)?.avatarUrl} /><AvatarFallback className="bg-gradient-to-br from-[#ff5a00] to-[#ff7a1a] text-[11px] font-black text-white">{initials(user?.name)}</AvatarFallback></Avatar>
+              <div className="hidden text-left md:block"><p className="text-[13px] font-bold leading-none text-slate-800">{user?.name || "Usuário"}</p></div>
+              <ChevronDown className="h-4 w-4 text-slate-400" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="truncate">{user?.email || "Minha conta"}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild><Link href="/configuracoes"><Settings className="mr-2 h-4 w-4"/>Configurações</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link href="/configuracoes"><KeyRound className="mr-2 h-4 w-4"/>Alterar senha</Link></DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })} className="text-red-600"><LogOut className="mr-2 h-4 w-4"/>Sair</DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-56 mt-1 rounded-xl shadow-lg border-slate-200">
+            <DropdownMenuLabel className="truncate text-slate-500 font-medium text-[11px] uppercase tracking-wider px-3 py-2">{user?.email || "Minha conta"}</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-slate-100" />
+            <DropdownMenuItem asChild className="rounded-md cursor-pointer mx-1 my-0.5 px-3 py-2 text-[13px]"><Link href="/configuracoes"><Settings className="mr-2.5 h-4 w-4 text-slate-500"/>Configurações</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild className="rounded-md cursor-pointer mx-1 my-0.5 px-3 py-2 text-[13px]"><Link href="/configuracoes"><KeyRound className="mr-2.5 h-4 w-4 text-slate-500"/>Alterar senha</Link></DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-slate-100" />
+            <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })} className="rounded-md cursor-pointer mx-1 my-0.5 px-3 py-2 text-[13px] text-red-600 focus:bg-red-50 focus:text-red-700"><LogOut className="mr-2.5 h-4 w-4 text-red-500"/>Sair</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -207,35 +207,63 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1540px] pb-8 text-[#17212b]">
-      <div className="mb-5 text-[11px] font-medium text-[#7f8994]">Obras <span className="mx-2 text-[#ff5a00]">›</span> Gestão Integrada <span className="mx-2 text-[#ff5a00]">›</span> <b>{cfg.title}</b></div>
-      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+    <div className="mx-auto w-full max-w-[1540px] pb-8 text-[#1e293b]">
+      <div className="mb-5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Obras <span className="mx-1 text-[#ff5a00]">›</span> Gestão Integrada <span className="mx-1 text-[#ff5a00]">›</span> <b>{cfg.title}</b></div>
+      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="font-['Arial_Narrow',Arial,sans-serif] text-[32px] font-black uppercase leading-none tracking-[-.045em] text-[#17212b]">{moduleTitle(module, cfg.title)}</h1>
-          <p className="mt-2 text-[13px] text-[#66717d]">{cfg.subtitle}</p>
-          <div className="mt-5 flex flex-wrap gap-7 border-b border-[#dfe5eb]">
-            {tabs.map((tab, i) => <button key={`${tab.resource}-${tab.label}`} onClick={() => { setActiveTab(i); setPage(1); }} className={cn("pb-3 text-[13px] font-black transition", i === activeTab ? "border-b-2 border-[#ff5a00] text-[#17212b]" : "text-[#717c88] hover:text-[#17212b]")}>{tab.label}</button>)}
+          <h1 className="awc-title text-[28px] font-black leading-none tracking-tight text-slate-900">{moduleTitle(module, cfg.title)}</h1>
+          <p className="mt-1.5 text-xs font-semibold text-slate-500">{cfg.subtitle}</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <div className="pillow-tabs">
+              {tabs.map((tab, i) => (
+                <button 
+                  key={`${tab.resource}-${tab.label}`} 
+                  onClick={() => { setActiveTab(i); setPage(1); }} 
+                  className={cn("pillow-tab cursor-pointer", i === activeTab ? "pillow-tab-active" : "")}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="h-10 rounded-[4px] border-[#d8dee5] bg-white font-bold" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />Exportar CSV</Button>
-          <Button className="h-10 rounded-[4px] bg-[#ff5a00] px-5 font-bold text-white shadow-[0_8px_20px_rgba(255,90,0,.22)] hover:bg-[#ef5200]" onClick={() => setModal({ mode: "create", row: { ...(current.filters || {}) } })}><Plus className="mr-2 h-4 w-4" />{current.action || defaultAction[cfg.key] || "Novo registro"}</Button>
+          <Button variant="outline" className="h-10 rounded-lg border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm" onClick={exportCsv}><Download className="mr-2 h-4 w-4" />Exportar CSV</Button>
+          <Button className="awc-btn-primary h-10 rounded-lg px-5 text-xs font-bold text-white shadow-md" onClick={() => setModal({ mode: "create", row: { ...(current.filters || {}) } })}><Plus className="mr-2 h-4 w-4" />{current.action || defaultAction[cfg.key] || "Novo registro"}</Button>
         </div>
       </div>
 
       <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {totals.map((t) => <div key={t.label} className="rounded-[6px] border border-[#e1e6eb] bg-white p-4 shadow-[0_8px_22px_rgba(23,33,43,.05)]"><p className="text-[11px] font-black uppercase text-[#66717d]">{t.label}</p><p className={cn("mt-2 text-2xl font-black", t.tone === "danger" ? "text-red-600" : t.tone === "success" ? "text-green-600" : "text-[#ff5a00]")}>{t.value}</p><p className="mt-1 text-xs text-[#7a8591]">{t.hint}</p></div>)}
+        {totals.map((t) => (
+          <div key={t.label} className="awc-card awc-card-interactive p-5 bg-white border-slate-200/50 shadow-sm shadow-slate-100/30">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t.label}</p>
+            <p className={cn("mt-1.5 text-2xl font-black leading-tight tracking-tight", t.tone === "danger" ? "text-red-650" : t.tone === "success" ? "text-emerald-600" : "text-slate-800")}>{t.value}</p>
+            <p className="mt-0.5 text-[11.5px] font-medium text-slate-400">{t.hint}</p>
+          </div>
+        ))}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative h-[44px] w-full max-w-[340px]"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6f7984]" /><input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} onKeyDown={(e) => e.key === "Enter" && load()} placeholder={`Buscar em ${current.label.toLowerCase()}...`} className="h-full w-full rounded-[5px] border border-[#d8dee5] bg-white pl-11 pr-9 text-[13px] outline-none focus:border-[#ff5a00]" />{search && <button onClick={() => { setSearch(""); setPage(1); }} aria-label="Limpar busca" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[#6f7984] hover:bg-slate-100 hover:text-[#17212b]"><X className="h-4 w-4" /></button>}</div>
-        <Button variant="outline" className="h-[44px] rounded-[5px] bg-white font-bold" onClick={load}>Buscar</Button>
+        <div className="relative h-10 w-full max-w-[340px]">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input 
+            value={search} 
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }} 
+            onKeyDown={(e) => e.key === "Enter" && load()} 
+            placeholder={`Buscar em ${current.label.toLowerCase()}...`} 
+            className="h-full w-full rounded-lg border border-slate-200 bg-white pl-10 pr-8 text-[13px] text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-[#ff5a00] focus:ring-4 focus:ring-[#ff5a00]/10" 
+          />
+          {search && (
+            <button onClick={() => { setSearch(""); setPage(1); }} aria-label="Limpar busca" className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-450 hover:bg-slate-100 hover:text-[#17212b]"><X className="h-4 w-4" /></button>
+          )}
+        </div>
+        <Button variant="outline" className="h-10 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 px-4 transition-colors" onClick={load}>Buscar</Button>
       </div>
 
-      {error && !modal && <div className="mb-4 rounded-[5px] border border-red-200 bg-red-50 p-3 text-[13px] font-semibold text-red-700">{error}</div>}
+      {error && !modal && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3.5 text-[13px] font-semibold text-red-700">{error}</div>}
 
-      <div className="overflow-hidden rounded-[6px] border border-[#e1e6eb] bg-white shadow-[0_10px_30px_rgba(23,33,43,.06)]">
-        {loading ? <TableSkeleton cols={listFields.length} /> : rows.length === 0 ? <div className="p-12 text-center"><p className="font-bold text-[#26323d]">{search ? `Nenhum resultado para “${search}”` : "Nenhum registro encontrado"}</p><p className="mt-1 text-[13px] text-[#68727d]">{search ? "Ajuste a busca ou limpe o filtro para ver todos os registros." : `Clique em “${current.action || defaultAction[cfg.key] || "Novo"}” para cadastrar.`}</p>{search && <Button variant="outline" className="mt-4 rounded-[5px] font-bold" onClick={() => { setSearch(""); setPage(1); }}>Limpar busca</Button>}</div> : <><DataTable rows={rows} fields={listFields} cfgFields={cfg.fields} offset={(page - 1) * PAGE_SIZE} onView={(row) => setModal({ mode: "view", row })} onEdit={(row) => setModal({ mode: "edit", row })} onDelete={remove} /><Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} /></>}
+      <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
+        {loading ? <TableSkeleton cols={listFields.length} /> : rows.length === 0 ? <div className="p-12 text-center bg-white"><p className="font-bold text-slate-900">{search ? `Nenhum resultado para “${search}”` : "Nenhum registro encontrado"}</p><p className="mt-1.5 text-[13px] text-slate-450 font-medium">{search ? "Ajuste a busca ou limpe o filtro para ver todos os registros." : `Clique em “${current.action || defaultAction[cfg.key] || "Novo"}” para cadastrar.`}</p>{search && <Button variant="outline" className="mt-4 rounded-lg font-bold text-xs" onClick={() => { setSearch(""); setPage(1); }}>Limpar busca</Button>}</div> : <><DataTable rows={rows} fields={listFields} cfgFields={cfg.fields} offset={(page - 1) * PAGE_SIZE} onView={(row) => setModal({ mode: "view", row })} onEdit={(row) => setModal({ mode: "edit", row })} onDelete={remove} /><Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} /></>}
       </div>
 
       {modal && <PremiumModal mode={modal.mode} cfg={cfg} row={modal.row} options={options} saving={saving} error={error} onClose={() => { setModal(null); setError(""); }} onSave={save} />}
@@ -274,21 +302,21 @@ function Pagination({ page, pageSize, total, onPage }: { page: number; pageSize:
   }
   const btn = "flex h-8 min-w-8 items-center justify-center rounded-[4px] px-2 text-[12px] font-bold transition disabled:cursor-not-allowed disabled:opacity-40";
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e4e9ee] bg-[#fbfcfd] px-5 py-3">
-      <p className="text-[12px] font-semibold text-[#64707c]">Mostrando {start}–{end} de {total}</p>
-      <nav className="flex items-center gap-1" aria-label="Paginação">
-        <button disabled={page === 1} onClick={() => onPage(page - 1)} aria-label="Página anterior" className={cn(btn, "text-[#52606d] hover:bg-slate-100")}><ChevronLeft className="h-4 w-4" /></button>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-[#fafbfc] px-5 py-3.5">
+      <p className="text-[12px] font-bold text-slate-500">Mostrando {start}–{end} de {total}</p>
+      <nav className="flex items-center gap-1.5" aria-label="Paginação">
+        <button disabled={page === 1} onClick={() => onPage(page - 1)} aria-label="Página anterior" className={cn(btn, "text-[#475569] hover:bg-slate-100 border border-slate-200/50 rounded-lg shadow-sm")}><ChevronLeft className="h-4 w-4" /></button>
         {nums.map((n, i) => n === "..."
-          ? <span key={`gap-${i}`} className="px-1 text-[12px] text-[#8a939e]">…</span>
-          : <button key={n} onClick={() => onPage(n)} aria-current={n === page ? "page" : undefined} className={cn(btn, n === page ? "bg-[#ff5a00] text-white" : "text-[#52606d] hover:bg-slate-100")}>{n}</button>)}
-        <button disabled={page === pages} onClick={() => onPage(page + 1)} aria-label="Próxima página" className={cn(btn, "text-[#52606d] hover:bg-slate-100")}><ChevronRight className="h-4 w-4" /></button>
+          ? <span key={`gap-${i}`} className="px-1 text-[12px] text-slate-400">…</span>
+          : <button key={n} onClick={() => onPage(n)} aria-current={n === page ? "page" : undefined} className={cn(btn, n === page ? "bg-[#ff5a00] border border-[#ff5a00] text-white" : "text-[#475569] hover:bg-slate-100 border border-slate-200/50 rounded-lg shadow-sm")}>{n}</button>)}
+        <button disabled={page === pages} onClick={() => onPage(page + 1)} aria-label="Próxima página" className={cn(btn, "text-[#475569] hover:bg-slate-100 border border-slate-200/50 rounded-lg shadow-sm")}><ChevronRight className="h-4 w-4" /></button>
       </nav>
     </div>
   );
 }
 
 function DataTable({ rows, fields, cfgFields, offset = 0, onView, onEdit, onDelete }: { rows: any[]; fields: CrudField[]; cfgFields: CrudField[]; offset?: number; onView: (row: any) => void; onEdit: (row: any) => void; onDelete: (row: any) => void }) {
-  return <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-[13px]"><thead><tr className="border-b border-[#e4e9ee] bg-[#fbfcfd] text-[11px] font-black uppercase text-[#52606d]"><th className="w-12 px-5 py-4">#</th>{fields.map((f) => <th key={f.name} className="px-3 py-4">{f.label}</th>)}<th className="px-3 py-4 text-right">Ações</th></tr></thead><tbody>{rows.map((row, i) => <tr key={row.id} className="border-b border-[#edf0f3] last:border-0 hover:bg-[#fafbfc]"><td className="px-5 py-4 font-bold text-[#27323e]">{offset + i + 1}</td>{fields.map((f) => <td key={f.name} className="max-w-[240px] truncate px-3 py-4 text-[#26323d]">{f.name === "status" || f.name === "resultado" ? <StatusPill value={fmtValue(row, f)} /> : fmtValue(row, f)}</td>)}<td className="whitespace-nowrap px-3 py-4 text-right"><button title="Ver detalhes" onClick={() => onView(row)} className="mr-2 rounded p-2 text-[#52606d] hover:bg-slate-100"><Eye className="h-4 w-4" /></button><button title="Editar" onClick={() => onEdit(row)} className="mr-2 rounded p-2 text-[#ff5a00] hover:bg-orange-50"><Edit3 className="h-4 w-4" /></button><button title="Excluir" onClick={() => onDelete(row)} className="rounded p-2 text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button></td></tr>)}</tbody></table></div>;
+  return <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-[13.5px]"><thead><tr className="border-b border-slate-200 bg-slate-50/50 text-[10px] font-bold uppercase tracking-wider text-slate-500"><th className="w-12 px-5 py-3.5">#</th>{fields.map((f) => <th key={f.name} className="px-3 py-3.5">{f.label}</th>)}<th className="px-5 py-3.5 text-right">Ações</th></tr></thead><tbody className="divide-y divide-slate-100">{rows.map((row, i) => <tr key={row.id} className="hover:bg-slate-50/30 transition-colors"><td className="px-5 py-4 font-bold text-slate-800">{offset + i + 1}</td>{fields.map((f) => <td key={f.name} className="max-w-[240px] truncate px-3 py-4 text-slate-655 font-medium">{f.name === "status" || f.name === "resultado" ? <StatusPill value={fmtValue(row, f)} /> : fmtValue(row, f)}</td>)}<td className="whitespace-nowrap px-5 py-4 text-right"><button title="Ver detalhes" onClick={() => onView(row)} className="mr-1.5 rounded-lg p-2 text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"><Eye className="h-4 w-4 stroke-[2]" /></button><button title="Editar" onClick={() => onEdit(row)} className="mr-1.5 rounded-lg p-2 text-[#ff5a00] hover:bg-orange-50 transition-colors cursor-pointer"><Edit3 className="h-4 w-4 stroke-[2]" /></button><button title="Excluir" onClick={() => onDelete(row)} className="rounded-lg p-2 text-red-650 hover:bg-red-50 transition-colors cursor-pointer"><Trash2 className="h-4 w-4 stroke-[2]" /></button></td></tr>)}</tbody></table></div>;
 }
 
 function StatusPill({ value }: { value: string }) {
@@ -305,7 +333,7 @@ function PremiumModal({ mode, cfg, row, options, saving, error, onClose, onSave 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#071622]/55 p-4 backdrop-blur-sm" onClick={() => { if (readOnly) onClose(); }}><div role="dialog" aria-modal="true" aria-label={cfg.title} className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-[10px] border border-white/30 bg-white shadow-[0_30px_80px_rgba(7,22,34,.35)]" onClick={(e) => e.stopPropagation()}><div className="flex items-start justify-between border-b border-[#e5eaf0] bg-gradient-to-r from-[#071622] to-[#102838] px-7 py-5 text-white"><div><p className="text-[11px] font-black uppercase text-[#ffb08a]">{mode === "create" ? "Cadastro" : mode === "edit" ? "Edição" : "Detalhes"}</p><h2 className="mt-1 font-['Arial_Narrow',Arial,sans-serif] text-2xl font-black uppercase tracking-[-.035em]">{cfg.title}</h2><p className="mt-1 text-sm text-white/65">Dados integrados ao banco e aos módulos do sistema.</p></div><button onClick={onClose} aria-label="Fechar" className="rounded-md p-2 text-white/80 hover:bg-white/10"><X className="h-5 w-5" /></button></div><form onSubmit={onSave}><div className="grid max-h-[62vh] gap-5 overflow-y-auto p-7 md:grid-cols-2">{error && <div className="md:col-span-2 rounded-[5px] border border-red-200 bg-red-50 p-3 text-[13px] font-semibold text-red-700">{error}</div>}{cfg.fields.map((field: CrudField) => <Field key={field.name} field={field} value={inputValue(row, field)} options={options} readOnly={readOnly} />)}</div><div className="flex items-center justify-between border-t border-[#e5eaf0] bg-[#fbfcfd] px-7 py-4"><p className="text-xs font-semibold text-[#64707c]">{readOnly ? "Campos em modo somente leitura." : "Preencha os dados e salve para integrar aos relatórios."}</p><div className="flex gap-3"><Button type="button" variant="outline" className="rounded-[4px] font-bold" onClick={onClose}>Fechar</Button>{!readOnly && <Button className="rounded-[4px] bg-[#ff5a00] font-bold text-white hover:bg-[#ef5200]" disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar</Button>}</div></div></form></div></div>;
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#050b11]/45 p-4 backdrop-blur-sm" onClick={() => { if (readOnly) onClose(); }}><div role="dialog" aria-modal="true" aria-label={cfg.title} className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_24px_50px_rgba(0,0,0,0.12)]" onClick={(e) => e.stopPropagation()}><div className="flex items-start justify-between border-b border-slate-100 bg-white px-7 py-5 text-slate-800"><div><p className="text-[10px] font-bold uppercase tracking-wider text-[#ff5a00]">{mode === "create" ? "Cadastro" : mode === "edit" ? "Edição" : "Detalhes"}</p><h2 className="mt-1 font-heading text-xl font-bold uppercase tracking-tight text-slate-900">{cfg.title}</h2><p className="mt-0.5 text-xs text-slate-500 font-medium">Os dados inseridos são sincronizados imediatamente com o banco.</p></div><button onClick={onClose} aria-label="Fechar" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"><X className="h-5 w-5" /></button></div><form onSubmit={onSave}><div className="grid max-h-[60vh] gap-5 overflow-y-auto p-7 md:grid-cols-2">{error && <div className="md:col-span-2 rounded-lg border border-red-200 bg-red-50 p-3.5 text-[13px] font-semibold text-red-700">{error}</div>}{cfg.fields.map((field: CrudField) => <Field key={field.name} field={field} value={inputValue(row, field)} options={options} readOnly={readOnly} />)}</div><div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-7 py-4"><p className="text-xs font-semibold text-slate-450">{readOnly ? "Modo somente visualização de registros." : "Campos com asterisco (*) são de preenchimento obrigatório."}</p><div className="flex gap-2.5"><Button type="button" variant="outline" className="rounded-lg font-bold text-xs h-10 px-4" onClick={onClose}>Fechar</Button>{!readOnly && <Button className="rounded-lg bg-[#ff5a00] font-bold text-xs text-white hover:bg-[#ef5200] h-10 px-5 transition-all shadow-md" disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar dados</Button>}</div></div></form></div></div>;
 }
 
 function TableSkeleton({ cols }: { cols: number }) {
@@ -330,6 +358,54 @@ function TableSkeleton({ cols }: { cols: number }) {
 
 function Field({ field, value, options, readOnly }: { field: CrudField; value: any; options: Options; readOnly: boolean }) {
   const relOpts = field.relation ? options[field.relation] || [] : [];
-  const cls = "h-10 w-full rounded-[5px] border border-[#d8dee5] bg-white px-3 text-[13px] text-[#202b36] outline-none focus:border-[#ff5a00] disabled:bg-[#f6f8fa]";
-  return <label className="block space-y-2"><span className="text-[12px] font-black text-[#24303b]">{field.label}{field.required && <span className="text-[#ff5a00]"> *</span>}</span>{field.type === "textarea" ? <textarea disabled={readOnly} name={field.name} defaultValue={value || ""} required={field.required} className="min-h-[88px] w-full rounded-[5px] border border-[#d8dee5] p-3 text-[13px] outline-none focus:border-[#ff5a00] disabled:bg-[#f6f8fa]" /> : field.type === "select" ? <select disabled={readOnly} name={field.name} defaultValue={value || ""} required={field.required} className={cls}><option value="">Selecione...</option>{field.options?.map((o) => <option key={o} value={o}>{o.replaceAll("_", " ")}</option>)}{relOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select> : field.type === "boolean" ? <input disabled={readOnly} name={field.name} type="checkbox" defaultChecked={Boolean(value)} className="h-5 w-5 rounded border-slate-300 text-[#ff5a00]" /> : <input disabled={readOnly} name={field.name} type={field.type === "date" ? "date" : field.type === "number" || field.type === "currency" ? "number" : "text"} step={field.type === "currency" ? "0.01" : field.type === "number" ? "any" : undefined} defaultValue={value || ""} required={field.required} className={cls} />}</label>;
+  const cls = "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] text-slate-800 outline-none focus:border-[#ff5a00] focus:ring-4 focus:ring-[#ff5a00]/10 disabled:bg-slate-50/50 disabled:text-slate-500 transition-all duration-200";
+  return (
+    <label className="block space-y-2">
+      <span className="text-[11.5px] font-bold text-slate-700 uppercase tracking-wide">
+        {field.label}
+        {field.required && <span className="text-[#ff5a00]"> *</span>}
+      </span>
+      {field.type === "textarea" ? (
+        <textarea 
+          disabled={readOnly} 
+          name={field.name} 
+          defaultValue={value || ""} 
+          required={field.required} 
+          className="min-h-[96px] w-full rounded-lg border border-slate-200 p-3 text-[13px] text-slate-800 outline-none focus:border-[#ff5a00] focus:ring-4 focus:ring-[#ff5a00]/10 disabled:bg-slate-50/50 disabled:text-slate-500 transition-all duration-200" 
+        />
+      ) : field.type === "select" ? (
+        <select 
+          disabled={readOnly} 
+          name={field.name} 
+          defaultValue={value || ""} 
+          required={field.required} 
+          className={cls}
+        >
+          <option value="">Selecione...</option>
+          {field.options?.map((o) => <option key={o} value={o}>{o.replaceAll("_", " ")}</option>)}
+          {relOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      ) : field.type === "boolean" ? (
+        <div className="flex h-10 items-center">
+          <input 
+            disabled={readOnly} 
+            name={field.name} 
+            type="checkbox" 
+            defaultChecked={Boolean(value)} 
+            className="h-5 w-5 rounded border-slate-350 text-[#ff5a00] focus:ring-[#ff5a00]/20 cursor-pointer" 
+          />
+        </div>
+      ) : (
+        <input 
+          disabled={readOnly} 
+          name={field.name} 
+          type={field.type === "date" ? "date" : field.type === "number" || field.type === "currency" ? "number" : "text"} 
+          step={field.type === "currency" ? "0.01" : field.type === "number" ? "any" : undefined} 
+          defaultValue={value || ""} 
+          required={field.required} 
+          className={cls} 
+        />
+      )}
+    </label>
+  );
 }
