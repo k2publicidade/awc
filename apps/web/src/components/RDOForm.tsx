@@ -91,6 +91,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
 
   // Fotos
   const [fotos, setFotos] = useState<Foto[]>([]);
+  const [deletedFotoIds, setDeletedFotoIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Assinatura
@@ -113,7 +114,10 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         const usersData = await usersRes.json().catch(() => ({}));
 
         setObras(obrasData.rows || []);
-        const engenheirosList = (usersData as any)?.users || [];
+        const engenheirosList = ((usersData as any)?.users || []).map((u: any) => ({
+          id: u.value,
+          name: u.label,
+        }));
         setEngenheiros(engenheirosList);
       } catch (e) {
         console.error("Erro ao carregar dados:", e);
@@ -206,6 +210,10 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
     setNovaFuncao("");
   };
 
+  const handleRemoveFuncao = (funcaoNome: string) => {
+    setEfetivo(efetivo.filter((e) => e.funcao !== funcaoNome));
+  };
+
   const handleAddAtividade = () => {
     if (!novaEtapa.trim() || !novaDescricao.trim()) return;
     const newAtividade: Atividade = {
@@ -245,6 +253,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   };
 
   const handleRemoveFoto = (id: string) => {
+    if (!/^\d+$/.test(id)) {
+      setDeletedFotoIds((prev) => [...prev, id]);
+    }
     setFotos(fotos.filter((f) => f.id !== id));
   };
 
@@ -347,6 +358,10 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         etapaId: null,
       }));
 
+      body.efetivos = efetivosPayload;
+      body.atividades = atividadesPayload;
+      body.status = status;
+
       let res: Response;
       if (isEditing) {
         // For edits, use the PUT endpoint
@@ -357,10 +372,6 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         });
       } else {
         // For new RDOs, create via the POST endpoint
-        body.efetivos = efetivosPayload;
-        body.atividades = atividadesPayload;
-        body.status = status;
-
         res = await fetch("/api/rdo", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -370,6 +381,39 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
 
       const dataRes = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(dataRes.error || "Erro ao salvar RDO");
+
+      const savedRdoId = isEditing ? rdoId : dataRes.id;
+
+      // Delete removed photos
+      for (const id of deletedFotoIds) {
+        try {
+          await fetch(`/api/crud/galeria/${id}`, {
+            method: "DELETE",
+          });
+        } catch (err) {
+          console.error("Erro ao deletar foto:", err);
+        }
+      }
+
+      // Upload new photos
+      for (const foto of fotos) {
+        if (foto.src.startsWith("data:")) {
+          try {
+            await fetch("/api/galeria", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                obraId,
+                url: foto.src,
+                legenda: foto.legenda,
+                rdoId: savedRdoId,
+              }),
+            });
+          } catch (err) {
+            console.error("Erro ao fazer upload da foto:", err);
+          }
+        }
+      }
 
       router.push("/rdo");
     } catch (e: any) {
@@ -541,6 +585,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                     <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Presente</th>
                     <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Falta Justificada</th>
                     <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Ausente</th>
+                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -591,6 +636,15 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                           className="w-12 h-[32px] text-center rounded-[4px] border border-[#e5e7eb] text-[13px] text-[#374151] bg-white outline-none focus:border-[#ff5a00]"
                         />
                       </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          onClick={() => handleRemoveFuncao(row.funcao)}
+                          className="p-1 hover:bg-red-50 rounded"
+                          type="button"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {efetivo.length > 0 && (
@@ -600,6 +654,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                       <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">{totalPresente}</td>
                       <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">{totalFalta}</td>
                       <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">{totalAusente}</td>
+                      <td></td>
                     </tr>
                   )}
                 </tbody>
