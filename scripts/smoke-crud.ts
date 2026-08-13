@@ -4,7 +4,7 @@ const stamp = Date.now();
 async function first(model: string, where?: any) { return (prisma as any)[model].findFirst({ where }); }
 async function main() {
   const tenant = await first("tenant") || await prisma.tenant.create({ data: { name: "Smoke", slug: `smoke-${stamp}` } });
-  const user = await first("user", { tenantId: tenant.id }) || await prisma.user.create({ data: { tenantId: tenant.id, name: "Smoke User", email: `smoke-${stamp}@awc.test`, role: "ADMIN" } as any });
+  const user = await first("user", { tenantId: tenant.id }) || await prisma.user.create({ data: { tenantId: tenant.id, name: "Smoke User", email: `smoke-${stamp}@rigor.test`, role: "ADMIN" } as any });
   const fornecedor = await first("fornecedor", { tenantId: tenant.id }) || await prisma.fornecedor.create({ data: { tenantId: tenant.id, razaoSocial: "Fornecedor Smoke", cnpj: `${stamp}` } });
   const obra = await prisma.obra.create({ data: { tenantId: tenant.id, nome: `Smoke Obra ${stamp}`, codigo: `SMK-${stamp}`, tipo: "GALPAO", status: "PLANEJAMENTO" } as any });
   const etapa = await prisma.etapa.create({ data: { obraId: obra.id, nome: "Smoke Etapa", ordem: 99 } as any });

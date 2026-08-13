@@ -6,5 +6,4 @@
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
-  NEXTAUTH_URL = "https://obras-awc.netlify.app"
   NODE_VERSION = "20"

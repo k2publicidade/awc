@@ -1,7 +1,7 @@
-export type CrudFieldType = "text" | "number" | "date" | "select" | "textarea" | "currency" | "boolean";
+export type CrudFieldType = "text" | "number" | "date" | "select" | "textarea" | "currency" | "boolean" | "file";
 export type CrudRelation = "obras" | "users" | "fornecedores" | "materiais" | "trabalhadores" | "etapas" | "contratos" | "medicoes" | "inspecoes" | "equipes";
-export type CrudField = { name: string; label: string; type: CrudFieldType; required?: boolean; options?: string[]; relation?: CrudRelation; placeholder?: string; list?: boolean };
-export type CrudResource = { key: string; title: string; subtitle: string; model: string; idPrefix: string; fields: CrudField[]; searchFields: string[]; orderBy?: Record<string, "asc" | "desc">; include?: Record<string, unknown>; tenantScoped?: boolean };
+export type CrudField = { name: string; label: string; type: CrudFieldType; required?: boolean; options?: string[]; relation?: CrudRelation; placeholder?: string; list?: boolean; accept?: string; uploadCategory?: string };
+export type CrudResource = { key: string; title: string; subtitle: string; model: string; idPrefix: string; fields: CrudField[]; searchFields: string[]; orderBy?: Record<string, "asc" | "desc">; include?: Record<string, DynamicValue>; tenantScoped?: boolean };
 
 const obraInclude = { obra: { select: { id: true, nome: true, codigo: true } } };
 const userSelect = { select: { id: true, name: true } };
@@ -173,7 +173,7 @@ export const resourceConfig: Record<string, CrudResource> = {
     { name: "descricao", label: "Descrição", type: "text", required: true, list: true },
     { name: "dataRealizacao", label: "Realização", type: "date", required: true, list: true },
     { name: "validade", label: "Validade", type: "date", list: true },
-    { name: "certificadoUrl", label: "Certificado URL", type: "text" }
+    { name: "certificadoUrl", label: "Certificado", type: "file", accept: "image/*,.pdf,.doc,.docx", uploadCategory: "certificados" }
   ]},
 
   documentos: { key: "documentos", title: "Documentos", subtitle: "Documentos técnicos, laudos e databook", model: "documento", idPrefix: "DOC", searchFields: ["nome", "numero", "descricao", "profissionalResponsavel"], orderBy: { createdAt: "desc" }, include: obraInclude, fields: [
@@ -185,7 +185,7 @@ export const resourceConfig: Record<string, CrudResource> = {
     { name: "status", label: "Status", type: "select", options: ["PENDENTE", "RECEBIDO", "EM_ANALISE", "APROVADO", "VENCIDO"], list: true },
     { name: "dataEmissao", label: "Emissão", type: "date" },
     { name: "validade", label: "Validade", type: "date", list: true },
-    { name: "arquivoUrl", label: "URL arquivo", type: "text" },
+    { name: "arquivoUrl", label: "Arquivo", type: "file", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.zip", uploadCategory: "documentos" },
     { name: "descricao", label: "Descrição", type: "textarea" }
   ]},
 
@@ -198,7 +198,9 @@ export const resourceConfig: Record<string, CrudResource> = {
     { name: "responsavelId", label: "Responsável", type: "select", relation: "users" },
     { name: "prazo", label: "Prazo", type: "date", list: true },
     { name: "status", label: "Status", type: "select", options: ["ABERTA", "EM_EXECUCAO", "VERIFICACAO", "ENCERRADA"], list: true },
-    { name: "acaoCorretiva", label: "Ação corretiva", type: "textarea" }
+    { name: "acaoCorretiva", label: "Ação corretiva", type: "textarea" },
+    { name: "fotoAntesUrl", label: "Foto antes", type: "file", accept: "image/*", uploadCategory: "qualidade" },
+    { name: "fotoDepoisUrl", label: "Foto depois", type: "file", accept: "image/*", uploadCategory: "qualidade" }
   ]},
 
   inspecoes: { key: "inspecoes", title: "Inspeções", subtitle: "Inspeções de qualidade por etapa", model: "inspecao", idPrefix: "INSP", searchFields: ["observacao"], orderBy: { data: "desc" }, include: { obra: { select: { id: true, nome: true } }, etapa: etapaSelect, responsavel: userSelect }, fields: [
@@ -235,7 +237,7 @@ export const resourceConfig: Record<string, CrudResource> = {
   galeria: { key: "galeria", title: "Galeria", subtitle: "Fotos por obra, etapa e RDO", model: "foto", idPrefix: "FTO", searchFields: ["legenda", "tags", "url"], orderBy: { data: "desc" }, include: { obra: { select: { id: true, nome: true } }, etapa: etapaSelect }, fields: [
     { name: "obraId", label: "Obra", type: "select", relation: "obras", required: true, list: true },
     { name: "etapaId", label: "Etapa", type: "select", relation: "etapas" },
-    { name: "url", label: "URL da foto", type: "text", required: true },
+    { name: "url", label: "Foto", type: "file", required: true, accept: "image/*", uploadCategory: "galeria" },
     { name: "legenda", label: "Legenda", type: "text", list: true },
     { name: "tags", label: "Tags", type: "text", list: true },
     { name: "data", label: "Data", type: "date", list: true }
@@ -261,7 +263,8 @@ export const resourceConfig: Record<string, CrudResource> = {
     { name: "dataInicio", label: "Início", type: "date" },
     { name: "dataFim", label: "Fim", type: "date", list: true },
     { name: "status", label: "Status", type: "select", options: ["EM_NEGOCIACAO", "VIGENTE", "VENCIDO", "ENCERRADO", "EM_RENOVACAO"], list: true },
-    { name: "observacoes", label: "Observações", type: "textarea" }
+    { name: "observacoes", label: "Observações", type: "textarea" },
+    { name: "arquivoUrl", label: "Arquivo do contrato", type: "file", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx", uploadCategory: "contratos" }
   ]},
 
   ocorrencias: { key: "ocorrencias", title: "Ocorrências", subtitle: "Desvios, problemas e decisões de obra", model: "ocorrencia", idPrefix: "OCR", searchFields: ["descricao", "resolucao"], orderBy: { dataAbertura: "desc" }, include: { obra: { select: { id: true, nome: true } }, etapa: etapaSelect }, fields: [

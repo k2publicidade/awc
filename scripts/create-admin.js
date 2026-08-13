@@ -1,6 +1,6 @@
 // Cria/atualiza o usuário administrador do sistema.
 // Uso: node scripts/create-admin.js [email] [senha] [nome]
-// Sem argumentos, usa o admin padrão da AWC.
+// Sem argumentos, cria um administrador para o ambiente de demonstração.
 const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcryptjs");
@@ -20,13 +20,13 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.argv[2] || "admin@awcpremoldados.com.br";
-  const password = process.argv[3] || "awc@2026";
-  const name = process.argv[4] || "Administrador AWC";
+  const email = process.argv[2] || "admin@demo.rigor.local";
+  const password = process.argv[3] || "admin123";
+  const name = process.argv[4] || "Administrador Demo";
 
   let tenant = await prisma.tenant.findFirst({ orderBy: { createdAt: "asc" } });
   if (!tenant) {
-    tenant = await prisma.tenant.create({ data: { name: "AWC Pré Moldados", slug: "awc", primaryColor: "#FF6B00" } });
+    tenant = await prisma.tenant.create({ data: { name: "Empresa Demonstração", slug: "demo", primaryColor: "#FF6B00" } });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);

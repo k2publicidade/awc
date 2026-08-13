@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: "class",
@@ -8,7 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        awc: {
+        rigor: {
           orange: "#FF6B00",
           dark: "#1E2832",
           gray: "#4A5568",
@@ -36,7 +37,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [animate],
 };
 
 export default config;

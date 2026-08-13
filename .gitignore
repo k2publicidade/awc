@@ -22,6 +22,11 @@ dist
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.codex-web-dev*.log
+.codex-tmp/
+.npm-cache/
+.npm-cache-swc/
+.npm-cache-clean/
 
 # local env files — nunca comitar credenciais reais
 .env
@@ -37,9 +42,6 @@ yarn-error.log*
 
 # turborepo
 .turbo
-
-# prisma
-packages/database/prisma/migrations/
 
 # typescript
 *.tsbuildinfo

@@ -1,19 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { requireSession } from '@/lib/session-context';
+import { assertTenantRelations, canAccessResource } from '@/lib/authorization';
 
 /** GET /api/rdo — List RDOs with filters */
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'rdos'))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
-  const obraId = searchParams.get("obraId");
-  const dataInicio = searchParams.get("dataInicio");
-  const dataFim = searchParams.get("dataFim");
+  const obraId = searchParams.get('obraId');
+  const dataInicio = searchParams.get('dataInicio');
+  const dataFim = searchParams.get('dataFim');
 
-  const where: any = {};
+  const where: DynamicValue = { obra: { tenantId: context.tenantId } };
   if (obraId) where.obraId = obraId;
   if (dataInicio || dataFim) {
     where.data = {};
@@ -33,7 +35,7 @@ export async function GET(req: NextRequest) {
       equipamentos: true,
       fotos: true,
     },
-    orderBy: { data: "desc" },
+    orderBy: { data: 'desc' },
   });
 
   return NextResponse.json(rdos);
@@ -41,25 +43,35 @@ export async function GET(req: NextRequest) {
 
 /** POST /api/rdo — Create RDO */
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'rdos', true))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const body = await req.json();
-  const userId = (session.user as any)?.id;
+  const userId = context.userId;
+  await assertTenantRelations(
+    { obraId: body.obraId, responsavelId: body.responsavelId || userId },
+    context.tenantId
+  );
+  for (const atividade of body.atividades || []) {
+    await assertTenantRelations({ etapaId: atividade.etapaId }, context.tenantId);
+  }
 
   const ultimo = await prisma.rDO.findFirst({
     where: { obraId: body.obraId },
-    orderBy: { numero: "desc" },
+    orderBy: { numero: 'desc' },
     select: { numero: true },
   });
 
   const rdo = await prisma.rDO.create({
     data: {
       data: new Date(body.data),
-      numero: body.numero != null && body.numero !== "" ? Number(body.numero) : (ultimo?.numero ?? 0) + 1,
+      numero:
+        body.numero != null && body.numero !== '' ? Number(body.numero) : (ultimo?.numero ?? 0) + 1,
       obraId: body.obraId,
       responsavelId: body.responsavelId || userId,
-      status: body.status === "APROVADO" ? "APROVADO" : "RASCUNHO",
+      status: body.status === 'APROVADO' ? 'APROVADO' : 'RASCUNHO',
       climaManha: body.climaManha || null,
       climaTarde: body.climaTarde || null,
       temperaturaManha: body.temperaturaManha != null ? Number(body.temperaturaManha) : null,
@@ -68,32 +80,51 @@ export async function POST(req: NextRequest) {
       assinaturaNome: body.assinaturaNome || null,
       assinaturaCrea: body.assinaturaCrea || null,
       assinaturaBase64: body.assinaturaImagem || body.assinaturaBase64 || null,
-      climas: { create: (body.climas || []).map((c: any) => ({
-        periodo: c.periodo, condicao: c.condicao,
-        temperatura: c.temperatura != null ? Number(c.temperatura) : null,
-        observacao: c.observacao || null,
-      })) },
-      efetivos: { create: (body.efetivos || []).map((e: any) => ({
-        funcao: e.funcao,
-        quantidadePresente: Number(e.quantidadePresente) || 0,
-        quantidadeAusente: Number(e.quantidadeAusente) || 0,
-        quantidadeFaltaJustificada: Number(e.quantidadeFaltaJustificada) || 0,
-      })) },
-      atividades: { create: (body.atividades || []).map((a: any) => ({
-        descricao: a.descricao || a.etapa || "",
-        etapaId: a.etapaId || null,
-        percentualExecutado: Number(a.percentualExecutado) || 0,
-      })) },
-      ocorrenciasRdo: { create: (body.ocorrencias || []).map((o: any) => ({
-        tipo: o.tipo, descricao: o.descricao,
-      })) },
-      equipamentos: { create: (body.equipamentos || []).map((e: any) => ({
-        equipamento: e.equipamento || e.nome || "",
-        horasTrabalhadas: Number(e.horasTrabalhadas ?? e.horas) || 0,
-        observacao: e.observacao || null,
-      })) },
+      climas: {
+        create: (body.climas || []).map((c: DynamicValue) => ({
+          periodo: c.periodo,
+          condicao: c.condicao,
+          temperatura: c.temperatura != null ? Number(c.temperatura) : null,
+          observacao: c.observacao || null,
+        })),
+      },
+      efetivos: {
+        create: (body.efetivos || []).map((e: DynamicValue) => ({
+          funcao: e.funcao,
+          quantidadePresente: Number(e.quantidadePresente) || 0,
+          quantidadeAusente: Number(e.quantidadeAusente) || 0,
+          quantidadeFaltaJustificada: Number(e.quantidadeFaltaJustificada) || 0,
+        })),
+      },
+      atividades: {
+        create: (body.atividades || []).map((a: DynamicValue) => ({
+          descricao: a.descricao || a.etapa || '',
+          etapaId: a.etapaId || null,
+          percentualExecutado: Number(a.percentualExecutado) || 0,
+        })),
+      },
+      ocorrenciasRdo: {
+        create: (body.ocorrencias || []).map((o: DynamicValue) => ({
+          tipo: o.tipo,
+          descricao: o.descricao,
+        })),
+      },
+      equipamentos: {
+        create: (body.equipamentos || []).map((e: DynamicValue) => ({
+          equipamento: e.equipamento || e.nome || '',
+          horasTrabalhadas: Number(e.horasTrabalhadas ?? e.horas) || 0,
+          observacao: e.observacao || null,
+        })),
+      },
     },
-    include: { obra: true, climas: true, efetivos: true, atividades: true, ocorrenciasRdo: true, equipamentos: true },
+    include: {
+      obra: true,
+      climas: true,
+      efetivos: true,
+      atividades: true,
+      ocorrenciasRdo: true,
+      equipamentos: true,
+    },
   });
 
   // Update etapa progress from atividades

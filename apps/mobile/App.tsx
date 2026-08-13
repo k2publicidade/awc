@@ -40,8 +40,8 @@ export default function App() {
   if (isLoading) {
     return (
       <View style={styles.splash}>
-        <Text style={styles.splashLogo}>AWC</Text>
-        <Text style={styles.splashSub}>Pré Moldados</Text>
+        <Text style={styles.splashLogo}>RIGOR</Text>
+        <Text style={styles.splashSub}>Gestão de obras</Text>
         <ActivityIndicator size="large" color={COLORS.orange} style={{ marginTop: 20 }} />
       </View>
     );

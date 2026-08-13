@@ -1,16 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { requireSession } from '@/lib/session-context';
+import { assertTenantRelations, canAccessResource } from '@/lib/authorization';
 
 /** GET /api/rdo/[id] */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'rdos'))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
-  const rdo = await prisma.rDO.findUnique({
-    where: { id },
+  const rdo = await prisma.rDO.findFirst({
+    where: { id, obra: { tenantId: context.tenantId } },
     include: {
       obra: { select: { id: true, nome: true, codigo: true } },
       responsavel: { select: { id: true, name: true } },
@@ -25,17 +27,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       presencas: true,
     },
   });
-  if (!rdo) return NextResponse.json({ error: "RDO não encontrado" }, { status: 404 });
+  if (!rdo) return NextResponse.json({ error: 'RDO não encontrado' }, { status: 404 });
   return NextResponse.json(rdo);
 }
 
 /** PUT /api/rdo/[id] — Full update with nested relations */
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'rdos', true))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
+  const existing = await prisma.rDO.findFirst({
+    where: { id, obra: { tenantId: context.tenantId } },
+    select: { id: true },
+  });
+  if (!existing) return NextResponse.json({ error: 'RDO não encontrado' }, { status: 404 });
 
   const body = await req.json();
+  await assertTenantRelations(body, context.tenantId);
+  for (const atividade of body.atividades || []) {
+    await assertTenantRelations({ etapaId: atividade.etapaId }, context.tenantId);
+  }
 
   // Update main fields
   const rdo = await prisma.rDO.update({
@@ -62,7 +75,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     await prisma.rDOEfetivo.deleteMany({ where: { rdoId: id } });
     if (body.efetivos.length > 0) {
       await prisma.rDOEfetivo.createMany({
-        data: body.efetivos.map((e: any) => ({
+        data: body.efetivos.map((e: DynamicValue) => ({
           rdoId: id,
           funcao: e.funcao,
           quantidadePresente: e.quantidadePresente || 0,
@@ -78,9 +91,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     await prisma.rDOAtividade.deleteMany({ where: { rdoId: id } });
     if (body.atividades.length > 0) {
       await prisma.rDOAtividade.createMany({
-        data: body.atividades.map((a: any) => ({
+        data: body.atividades.map((a: DynamicValue) => ({
           rdoId: id,
-          descricao: a.descricao || a.etapa || "",
+          descricao: a.descricao || a.etapa || '',
           etapaId: a.etapaId || undefined,
           percentualExecutado: a.percentualExecutado || 0,
         })),
@@ -94,8 +107,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 /** DELETE /api/rdo/[id] */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'rdos', true))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
+  const existing = await prisma.rDO.findFirst({
+    where: { id, obra: { tenantId: context.tenantId } },
+    select: { id: true },
+  });
+  if (!existing) return NextResponse.json({ error: 'RDO não encontrado' }, { status: 404 });
 
   await prisma.rDO.delete({ where: { id } });
   return NextResponse.json({ ok: true });

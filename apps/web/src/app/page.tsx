@@ -1,13 +1,27 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import type { Metadata } from 'next';
+import { LandingPage } from '@/components/landing/landing-page';
 
-export default async function HomePage() {
-  const session = await getServerSession(authOptions);
+export const metadata: Metadata = {
+  title: 'RIGOR | Gestão de obras do canteiro à diretoria',
+  description:
+    'Centralize planejamento, RDO, custos, materiais, qualidade, segurança e documentos em uma plataforma criada para a construção civil.',
+  keywords: [
+    'gestão de obras',
+    'software para construção civil',
+    'RDO digital',
+    'controle de obras',
+    'cronograma de obras',
+  ],
+  openGraph: {
+    title: 'RIGOR | Controle real para obras reais',
+    description:
+      'Uma operação conectada para planejar, executar e acompanhar cada obra com clareza.',
+    type: 'website',
+    locale: 'pt_BR',
+    siteName: 'RIGOR',
+  },
+};
 
-  if (!session) {
-    redirect("/login");
-  }
-
-  redirect("/dashboard");
+export default function HomePage() {
+  return <LandingPage />;
 }

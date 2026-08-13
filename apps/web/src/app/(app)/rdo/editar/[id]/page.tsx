@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useParams } from "next/navigation";
-import { RDOForm } from "@/components/RDOForm";
+import { useParams } from 'next/navigation';
+import { RDOForm } from '@/components/RDOForm';
 
 export default function EditarRdoPage() {
   const params = useParams();

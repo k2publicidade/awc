@@ -9,7 +9,7 @@ base = 'http://localhost:3000'
 jar = http.cookiejar.CookieJar()
 op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 csrf = json.loads(op.open(base + '/api/auth/csrf').read().decode())['csrfToken']
-body = urllib.parse.urlencode({'csrfToken': csrf, 'email': 'admin@awc.com.br', 'password': 'admin123', 'json': 'true'}).encode()
+body = urllib.parse.urlencode({'csrfToken': csrf, 'email': 'admin@demo.rigor.local', 'password': 'admin123', 'json': 'true'}).encode()
 op.open(urllib.request.Request(base + '/api/auth/callback/credentials', data=body,
         headers={'Content-Type': 'application/x-www-form-urlencoded'}))
 
@@ -20,7 +20,7 @@ checks = [
     ('/obras?busca=teste', ['Buscar em'], []),
     ('/notificacoes', ['Marcar todas como lidas'], []),
     ('/relatorios', ['Gerar relat', 'Curva S'], []),
-    ('/login', ['Esqueci minha senha', 'Entrar no ObrasAWC'], []),
+    ('/login', ['Esqueci minha senha', 'Entrar no RIGOR'], []),
     ('/configuracoes', ['Alterar minha senha'], []),
 ]
 

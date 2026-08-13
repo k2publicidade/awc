@@ -1,5 +1,5 @@
 {
-  "name": "awc-obras",
+  "name": "rigor-platform",
   "version": "0.0.1",
   "private": true,
   "workspaces": [
@@ -14,6 +14,10 @@
  "db:generate": "turbo run db:generate",
  "db:push": "turbo run db:push",
  "db:studio": "turbo run db:studio",
+ "db:migrate:deploy": "prisma migrate deploy --schema=packages/database/prisma/schema.prisma",
+ "supabase:configure": "node scripts/configure-supabase-env.js",
+ "master:create": "node scripts/create-master-admin.js",
+ "test:import": "npx tsx apps/web/scripts/test-obra-import.ts",
  "postinstall": "npx prisma generate --schema=packages/database/prisma/schema.prisma"
  },
  "devDependencies": {

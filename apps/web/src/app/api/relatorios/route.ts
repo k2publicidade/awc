@@ -1,14 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { generateRelatorioExecutivo } from "@/lib/reports/executivo";
-import { generateBoletimMedicao } from "@/lib/reports/boletim-medicao";
-import { generateRDOCompilado } from "@/lib/reports/rdo-compilado";
-import { generateCurvaS } from "@/lib/reports/curva-s";
-import { generateRelatorioQualidade } from "@/lib/reports/qualidade";
-import { generateRelatorioSeguranca } from "@/lib/reports/seguranca";
-import { generateRelatorioFinanceiro } from "@/lib/reports/financeiro";
-import { generateDatabook } from "@/lib/reports/databook";
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { requireSession } from '@/lib/session-context';
+import { canAccessResource, tenantOwnsObra } from '@/lib/authorization';
+import { generateRelatorioExecutivo } from '@/lib/reports/executivo';
+import { generateBoletimMedicao } from '@/lib/reports/boletim-medicao';
+import { generateRDOCompilado } from '@/lib/reports/rdo-compilado';
+import { generateCurvaS } from '@/lib/reports/curva-s';
+import { generateRelatorioQualidade } from '@/lib/reports/qualidade';
+import { generateRelatorioSeguranca } from '@/lib/reports/seguranca';
+import { generateRelatorioFinanceiro } from '@/lib/reports/financeiro';
+import { generateDatabook } from '@/lib/reports/databook';
 
 /**
  * GET /api/relatorios?type=executivo&obraId=xxx
@@ -21,65 +22,94 @@ import { generateDatabook } from "@/lib/reports/databook";
  *   format: html (default) | pdf
  */
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type") || "executivo";
-  const obraId = searchParams.get("obraId") || "";
-  const format = searchParams.get("format") || "html";
+  const type = searchParams.get('type') || 'executivo';
+  const obraId = searchParams.get('obraId') || '';
+  const format = searchParams.get('format') || 'html';
 
-  let html = "";
+  const resourceByType: Record<string, string> = {
+    executivo: 'obras',
+    medicao: 'medicoes',
+    rdo: 'rdos',
+    'curva-s': 'etapas',
+    qualidade: 'qualidade',
+    seguranca: 'seguranca',
+    financeiro: 'financeiro',
+    databook: 'documentos',
+  };
+  const resource = resourceByType[type];
+  if (!resource || !canAccessResource(context.role, resource))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
+
+  if (type === 'medicao') {
+    const medicaoId = searchParams.get('medicaoId') || '';
+    const owned = await prisma.medicao.findFirst({
+      where: { id: medicaoId, obra: { tenantId: context.tenantId } },
+      select: { id: true },
+    });
+    if (!owned) return NextResponse.json({ error: 'Medição não encontrada' }, { status: 404 });
+  } else {
+    if (!obraId) return NextResponse.json({ error: 'obraId é obrigatório' }, { status: 400 });
+    if (!(await tenantOwnsObra(obraId, context.tenantId)))
+      return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
+  }
+
+  let html = '';
 
   try {
     switch (type) {
-      case "executivo":
+      case 'executivo':
         html = await generateRelatorioExecutivo(obraId);
         break;
-      case "medicao":
-        const medicaoId = searchParams.get("medicaoId") || "";
+      case 'medicao':
+        const medicaoId = searchParams.get('medicaoId') || '';
         html = await generateBoletimMedicao(medicaoId);
         break;
-      case "rdo":
-        const dataInicio = searchParams.get("dataInicio") || new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
-        const dataFim = searchParams.get("dataFim") || new Date().toISOString().split("T")[0];
+      case 'rdo':
+        const dataInicio =
+          searchParams.get('dataInicio') ||
+          new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        const dataFim = searchParams.get('dataFim') || new Date().toISOString().split('T')[0];
         html = await generateRDOCompilado(obraId, dataInicio, dataFim);
         break;
-      case "curva-s":
+      case 'curva-s':
         html = await generateCurvaS(obraId);
         break;
-      case "qualidade":
+      case 'qualidade':
         html = await generateRelatorioQualidade(obraId);
         break;
-      case "seguranca":
+      case 'seguranca':
         html = await generateRelatorioSeguranca(obraId);
         break;
-      case "financeiro":
+      case 'financeiro':
         html = await generateRelatorioFinanceiro(obraId);
         break;
-      case "databook":
+      case 'databook':
         html = await generateDatabook(obraId);
         break;
       default:
-        return NextResponse.json({ error: "Tipo de relatório inválido" }, { status: 400 });
+        return NextResponse.json({ error: 'Tipo de relatório inválido' }, { status: 400 });
     }
 
-    if (format === "pdf") {
+    if (format === 'pdf') {
       // In production, use Puppeteer to convert HTML → PDF
       // For now, return HTML with PDF content-type hint
       return new NextResponse(html, {
         headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "Content-Disposition": `attachment; filename="relatorio-${type}.pdf"`,
+          'Content-Type': 'text/html; charset=utf-8',
+          'Content-Disposition': `attachment; filename="relatorio-${type}.pdf"`,
         },
       });
     }
 
     return new NextResponse(html, {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
-  } catch (error: any) {
-    console.error("Report generation error:", error);
+  } catch (error: DynamicValue) {
+    console.error('Report generation error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

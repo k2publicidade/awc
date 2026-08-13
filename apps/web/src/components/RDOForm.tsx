@@ -1,10 +1,11 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import {
   Building2,
   Cloud,
@@ -22,7 +23,7 @@ import {
   Check,
   Loader2,
   ArrowLeft,
-} from "lucide-react";
+} from 'lucide-react';
 
 // ─── Types ───
 interface EfetivoRow {
@@ -56,37 +57,39 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [carregandoObras, setCarregandoObras] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   // Data from API
   const [obras, setObras] = useState<{ id: string; nome: string }[]>([]);
   const [engenheiros, setEngenheiros] = useState<{ id: string; name: string }[]>([]);
 
   // Identificação
-  const [obraId, setObraId] = useState("");
+  const [obraId, setObraId] = useState('');
   const [showObraDropdown, setShowObraDropdown] = useState(false);
-  const [obraNome, setObraNome] = useState("");
+  const [obraNome, setObraNome] = useState('');
   const [data, setData] = useState(new Date().toISOString().slice(0, 10));
-  const [engenheiro, setEngenheiro] = useState("");
-  const [engenheiroId, setEngenheiroId] = useState("");
-  const [rdoNumero, setRdoNumero] = useState("");
+  const [engenheiro, setEngenheiro] = useState('');
+  const [engenheiroId, setEngenheiroId] = useState('');
+  const [rdoNumero, setRdoNumero] = useState('');
   const [showEngDropdown, setShowEngDropdown] = useState(false);
 
   // Condições Climáticas
-  const [climaManha, setClimaManha] = useState<"sol" | "nublado" | "chuva" | "encoberto">("sol");
-  const [climaTarde, setClimaTarde] = useState<"sol" | "nublado" | "chuva" | "encoberto">("nublado");
-  const [tempManha, setTempManha] = useState("");
-  const [tempTarde, setTempTarde] = useState("");
+  const [climaManha, setClimaManha] = useState<'sol' | 'nublado' | 'chuva' | 'encoberto'>('sol');
+  const [climaTarde, setClimaTarde] = useState<'sol' | 'nublado' | 'chuva' | 'encoberto'>(
+    'nublado'
+  );
+  const [tempManha, setTempManha] = useState('');
+  const [tempTarde, setTempTarde] = useState('');
 
   // Efetivo Presente
   const [efetivo, setEfetivo] = useState<EfetivoRow[]>([]);
-  const [novaFuncao, setNovaFuncao] = useState("");
+  const [novaFuncao, setNovaFuncao] = useState('');
 
   // Atividades
   const [atividades, setAtividades] = useState<Atividade[]>([]);
-  const [novaEtapa, setNovaEtapa] = useState("");
-  const [novaDescricao, setNovaDescricao] = useState("");
-  const [novoPercentual, setNovoPercentual] = useState("");
+  const [novaEtapa, setNovaEtapa] = useState('');
+  const [novaDescricao, setNovaDescricao] = useState('');
+  const [novoPercentual, setNovoPercentual] = useState('');
   const [showAddAtividade, setShowAddAtividade] = useState(false);
 
   // Fotos
@@ -97,8 +100,8 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   // Assinatura
   const [assinado, setAssinado] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
-  const [crea, setCrea] = useState("");
-  const [nomeAssinatura, setNomeAssinatura] = useState("");
+  const [crea, setCrea] = useState('');
+  const [nomeAssinatura, setNomeAssinatura] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
@@ -107,20 +110,22 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
     async function load() {
       try {
         const [obrasRes, usersRes] = await Promise.all([
-          fetch("/api/crud/obras?search="),
-          fetch("/api/crud-options"),
+          fetch('/api/crud/obras?search='),
+          fetch('/api/crud-options'),
         ]);
         const obrasData = await obrasRes.json();
         const usersData = await usersRes.json().catch(() => ({}));
 
         setObras(obrasData.rows || []);
-        const engenheirosList = ((usersData as any)?.users || []).map((u: any) => ({
-          id: u.value,
-          name: u.label,
-        }));
+        const engenheirosList = ((usersData as DynamicValue)?.users || []).map(
+          (u: DynamicValue) => ({
+            id: u.value,
+            name: u.label,
+          })
+        );
         setEngenheiros(engenheirosList);
       } catch (e) {
-        console.error("Erro ao carregar dados:", e);
+        console.error('Erro ao carregar dados:', e);
       } finally {
         setCarregandoObras(false);
       }
@@ -131,36 +136,36 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   // Load RDO data when editing
   useEffect(() => {
     if (!rdoId) return;
-    setLoading(true);
+    const loadingTimer = window.setTimeout(() => setLoading(true), 0);
     fetch(`/api/rdo/${rdoId}`)
       .then((r) => r.json())
       .then((rdo) => {
-        setObraId(rdo.obraId || "");
-        setObraNome(rdo.obra?.nome || "");
-        setData(rdo.data ? new Date(rdo.data).toISOString().slice(0, 10) : "");
-        setEngenheiro(rdo.responsavel?.name || rdo.assinaturaNome || "");
-        setEngenheiroId(rdo.responsavelId || "");
-        setRdoNumero(String(rdo.numero || ""));
-        setCrea(rdo.assinaturaCrea || "");
-        setNomeAssinatura(rdo.assinaturaNome || "");
-        setConfirmado(rdo.status === "APROVADO");
+        setObraId(rdo.obraId || '');
+        setObraNome(rdo.obra?.nome || '');
+        setData(rdo.data ? new Date(rdo.data).toISOString().slice(0, 10) : '');
+        setEngenheiro(rdo.responsavel?.name || rdo.assinaturaNome || '');
+        setEngenheiroId(rdo.responsavelId || '');
+        setRdoNumero(String(rdo.numero || ''));
+        setCrea(rdo.assinaturaCrea || '');
+        setNomeAssinatura(rdo.assinaturaNome || '');
+        setConfirmado(rdo.status === 'APROVADO');
 
         // Clima
-        const climaMap: Record<string, "sol" | "nublado" | "chuva" | "encoberto"> = {
-          ENSOLARADO: "sol",
-          NUBLADO: "nublado",
-          CHUVOSO: "chuva",
-          PARCIALMENTE_NUBLADO: "encoberto",
+        const climaMap: Record<string, 'sol' | 'nublado' | 'chuva' | 'encoberto'> = {
+          ENSOLARADO: 'sol',
+          NUBLADO: 'nublado',
+          CHUVOSO: 'chuva',
+          PARCIALMENTE_NUBLADO: 'encoberto',
         };
-        if (rdo.climaManha) setClimaManha(climaMap[rdo.climaManha] || "sol");
-        if (rdo.climaTarde) setClimaTarde(climaMap[rdo.climaTarde] || "nublado");
+        if (rdo.climaManha) setClimaManha(climaMap[rdo.climaManha] || 'sol');
+        if (rdo.climaTarde) setClimaTarde(climaMap[rdo.climaTarde] || 'nublado');
         if (rdo.temperaturaManha != null) setTempManha(String(rdo.temperaturaManha));
         if (rdo.temperaturaTarde != null) setTempTarde(String(rdo.temperaturaTarde));
 
         // Efetivo
         if (rdo.efetivos?.length) {
           setEfetivo(
-            rdo.efetivos.map((e: any) => ({
+            rdo.efetivos.map((e: DynamicValue) => ({
               id: e.id,
               funcao: e.funcao,
               previsto: e.quantidadePresente + e.quantidadeAusente + e.quantidadeFaltaJustificada,
@@ -174,10 +179,10 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         // Atividades
         if (rdo.atividades?.length) {
           setAtividades(
-            rdo.atividades.map((a: any) => ({
+            rdo.atividades.map((a: DynamicValue) => ({
               id: a.id,
-              etapa: a.etapa?.nome || a.descricao || "",
-              descricao: a.descricao || "",
+              etapa: a.etapa?.nome || a.descricao || '',
+              descricao: a.descricao || '',
               percentual: a.percentualExecutado || 0,
             }))
           );
@@ -186,10 +191,10 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         // Fotos
         if (rdo.fotos?.length) {
           setFotos(
-            rdo.fotos.map((f: any) => ({
+            rdo.fotos.map((f: DynamicValue) => ({
               id: f.id,
               src: f.url,
-              legenda: f.legenda || "",
+              legenda: f.legenda || '',
             }))
           );
         }
@@ -199,15 +204,19 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
           setAssinado(true);
         }
       })
-      .catch((e) => setError("Erro ao carregar RDO: " + e.message))
+      .catch((e) => setError('Erro ao carregar RDO: ' + e.message))
       .finally(() => setLoading(false));
+    return () => window.clearTimeout(loadingTimer);
   }, [rdoId]);
 
   // ─── Handlers ───
   const handleAddFuncao = () => {
     if (!novaFuncao.trim()) return;
-    setEfetivo([...efetivo, { funcao: novaFuncao, previsto: 0, presente: 0, faltaJustificada: 0, ausente: 0 }]);
-    setNovaFuncao("");
+    setEfetivo([
+      ...efetivo,
+      { funcao: novaFuncao, previsto: 0, presente: 0, faltaJustificada: 0, ausente: 0 },
+    ]);
+    setNovaFuncao('');
   };
 
   const handleRemoveFuncao = (funcaoNome: string) => {
@@ -223,9 +232,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
       percentual: Number(novoPercentual) || 0,
     };
     setAtividades([...atividades, newAtividade]);
-    setNovaEtapa("");
-    setNovaDescricao("");
-    setNovoPercentual("");
+    setNovaEtapa('');
+    setNovaDescricao('');
+    setNovoPercentual('');
     setShowAddAtividade(false);
   };
 
@@ -260,7 +269,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   };
 
   // Canvas signature
-  const getCanvasPos = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const getCanvasPos = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -270,12 +281,14 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const startDrawing = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
     setIsDrawing(true);
     const { x, y } = getCanvasPos(e);
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -286,7 +299,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
     const { x, y } = getCanvasPos(e);
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -300,7 +313,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   const clearSignature = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setAssinado(false);
@@ -309,26 +322,26 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   const getSignatureDataUrl = () => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
-    return canvas.toDataURL("image/png");
+    return canvas.toDataURL('image/png');
   };
 
   const mapClimaToEnum = (clima: string) => {
     const map: Record<string, string> = {
-      sol: "ENSOLARADO",
-      nublado: "NUBLADO",
-      chuva: "CHUVOSO",
-      encoberto: "PARCIALMENTE_NUBLADO",
+      sol: 'ENSOLARADO',
+      nublado: 'NUBLADO',
+      chuva: 'CHUVOSO',
+      encoberto: 'PARCIALMENTE_NUBLADO',
     };
-    return map[clima] || "ENSOLARADO";
+    return map[clima] || 'ENSOLARADO';
   };
 
   // Save
-  const handleSalvar = async (status: "RASCUNHO" | "APROVADO" = "RASCUNHO") => {
+  const handleSalvar = async (status: 'RASCUNHO' | 'APROVADO' = 'RASCUNHO') => {
     setSaving(true);
-    setError("");
+    setError('');
 
     try {
-      const body: any = {
+      const body: DynamicValue = {
         obraId: obraId || undefined,
         data: data || new Date().toISOString(),
         responsavelId: engenheiroId || undefined,
@@ -341,7 +354,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         assinaturaCrea: crea || undefined,
         assinaturaImagem: assinado ? getSignatureDataUrl() : undefined,
         status,
-        observacoes: `RDO gerado em ${new Date().toLocaleDateString("pt-BR")} - ${atividades.length} atividades, ${efetivo.length} funções`,
+        observacoes: `RDO gerado em ${new Date().toLocaleDateString('pt-BR')} - ${atividades.length} atividades, ${efetivo.length} funções`,
       };
 
       const efetivosPayload = efetivo.map((e) => ({
@@ -366,21 +379,21 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
       if (isEditing) {
         // For edits, use the PUT endpoint
         res = await fetch(`/api/rdo/${rdoId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
       } else {
         // For new RDOs, create via the POST endpoint
-        res = await fetch("/api/rdo", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        res = await fetch('/api/rdo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
       }
 
       const dataRes = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(dataRes.error || "Erro ao salvar RDO");
+      if (!res.ok) throw new Error(dataRes.error || 'Erro ao salvar RDO');
 
       const savedRdoId = isEditing ? rdoId : dataRes.id;
 
@@ -388,20 +401,20 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
       for (const id of deletedFotoIds) {
         try {
           await fetch(`/api/crud/galeria/${id}`, {
-            method: "DELETE",
+            method: 'DELETE',
           });
         } catch (err) {
-          console.error("Erro ao deletar foto:", err);
+          console.error('Erro ao deletar foto:', err);
         }
       }
 
       // Upload new photos
       for (const foto of fotos) {
-        if (foto.src.startsWith("data:")) {
+        if (foto.src.startsWith('data:')) {
           try {
-            await fetch("/api/galeria", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
+            await fetch('/api/galeria', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 obraId,
                 url: foto.src,
@@ -410,14 +423,14 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
               }),
             });
           } catch (err) {
-            console.error("Erro ao fazer upload da foto:", err);
+            console.error('Erro ao fazer upload da foto:', err);
           }
         }
       }
 
-      router.push("/rdo");
-    } catch (e: any) {
-      setError(e.message || "Erro ao salvar RDO");
+      router.push('/rdo');
+    } catch (e: DynamicValue) {
+      setError(e.message || 'Erro ao salvar RDO');
     } finally {
       setSaving(false);
     }
@@ -442,7 +455,10 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
     <div className="min-h-screen bg-[#f5f7f9] pb-12">
       {/* Breadcrumb */}
       <div className="mb-6 flex items-center gap-2">
-        <button onClick={() => router.push("/rdo")} className="flex items-center gap-1 text-[12px] text-[#64707c] hover:text-[#17212b] transition-colors">
+        <button
+          onClick={() => router.push('/rdo')}
+          className="flex items-center gap-1 text-[12px] text-[#64707c] hover:text-[#17212b] transition-colors"
+        >
           <ArrowLeft className="h-3.5 w-3.5" />
           Voltar
         </button>
@@ -452,14 +468,18 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
           <span>›</span>
           <span className="hover:text-[#17212b] cursor-pointer">RDO</span>
           <span>›</span>
-          <span className="font-semibold text-[#17212b]">{isEditing ? `RDO #${rdoNumero}` : "Novo RDO"}</span>
+          <span className="font-semibold text-[#17212b]">
+            {isEditing ? `RDO #${rdoNumero}` : 'Novo RDO'}
+          </span>
         </nav>
       </div>
 
       {/* Título */}
       <div className="mb-8">
         <h1 className="text-[26px] font-bold text-[#17212b] tracking-tight">
-          {isEditing ? `RDO #${rdoNumero} — ${new Date(data).toLocaleDateString("pt-BR")}` : `Novo RDO — ${new Date(data + "T12:00:00").toLocaleDateString("pt-BR")}`}
+          {isEditing
+            ? `RDO #${rdoNumero} — ${new Date(data).toLocaleDateString('pt-BR')}`
+            : `Novo RDO — ${new Date(data + 'T12:00:00').toLocaleDateString('pt-BR')}`}
         </h1>
         <p className="mt-1 text-[14px] text-[#64707c]">Registre as informações diárias da obra</p>
       </div>
@@ -475,7 +495,11 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         {/* ─── COLUNA ESQUERDA ─── */}
         <div className="space-y-6">
           {/* Card 1: Identificação */}
-          <Card numero={1} titulo="IDENTIFICAÇÃO" icone={<Building2 className="h-5 w-5 text-[#ff5a00]" />}>
+          <Card
+            numero={1}
+            titulo="IDENTIFICAÇÃO"
+            icone={<Building2 className="h-5 w-5 text-[#ff5a00]" />}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Obra - Dropdown */}
               <div className="relative">
@@ -491,7 +515,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                       onClick={() => setShowObraDropdown(!showObraDropdown)}
                       className="flex h-[42px] w-full items-center justify-between rounded-[6px] border border-[#e5e7eb] bg-white px-3 text-[13px] text-[#374151]"
                     >
-                      <span className="truncate">{obraNome || "Selecione uma obra..."}</span>
+                      <span className="truncate">{obraNome || 'Selecione uma obra...'}</span>
                       <ChevronDown className="h-4 w-4 text-[#9aa3ad] shrink-0" />
                     </button>
                     {showObraDropdown && (
@@ -505,8 +529,8 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                               setShowObraDropdown(false);
                             }}
                             className={cn(
-                              "flex w-full items-center px-3 py-2 text-[13px] hover:bg-[#f3f4f6] text-left",
-                              obraId === o.id ? "text-[#ff5a00] font-medium" : "text-[#374151]"
+                              'flex w-full items-center px-3 py-2 text-[13px] hover:bg-[#f3f4f6] text-left',
+                              obraId === o.id ? 'text-[#ff5a00] font-medium' : 'text-[#374151]'
                             )}
                           >
                             {obraId === o.id && <Check className="mr-2 h-4 w-4 shrink-0" />}
@@ -531,12 +555,14 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                 </div>
               </div>
               <div className="relative">
-                <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">Engenheiro responsável</label>
+                <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">
+                  Engenheiro responsável
+                </label>
                 <button
                   onClick={() => setShowEngDropdown(!showEngDropdown)}
                   className="flex h-[42px] w-full items-center justify-between rounded-[6px] border border-[#e5e7eb] bg-white px-3 text-[13px] text-[#374151]"
                 >
-                  <span className="truncate">{engenheiro || "Selecione..."}</span>
+                  <span className="truncate">{engenheiro || 'Selecione...'}</span>
                   <ChevronDown className="h-4 w-4 text-[#9aa3ad] shrink-0" />
                 </button>
                 {showEngDropdown && (
@@ -551,8 +577,8 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                           setShowEngDropdown(false);
                         }}
                         className={cn(
-                          "flex w-full items-center px-3 py-2 text-[13px] hover:bg-[#f3f4f6]",
-                          engenheiro === e.name ? "text-[#ff5a00] font-medium" : "text-[#374151]"
+                          'flex w-full items-center px-3 py-2 text-[13px] hover:bg-[#f3f4f6]',
+                          engenheiro === e.name ? 'text-[#ff5a00] font-medium' : 'text-[#374151]'
                         )}
                       >
                         {engenheiro === e.name && <Check className="mr-2 h-4 w-4 shrink-0" />}
@@ -563,7 +589,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                 )}
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">RDO n°</label>
+                <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">
+                  RDO n°
+                </label>
                 <Input
                   value={rdoNumero}
                   onChange={(e) => setRdoNumero(e.target.value)}
@@ -575,17 +603,33 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
           </Card>
 
           {/* Card 3: Efetivo Presente */}
-          <Card numero={3} titulo="EFETIVO PRESENTE" icone={<Users className="h-5 w-5 text-[#ff5a00]" />}>
+          <Card
+            numero={3}
+            titulo="EFETIVO PRESENTE"
+            icone={<Users className="h-5 w-5 text-[#ff5a00]" />}
+          >
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="border-b border-[#e5e7eb]">
-                    <th className="py-2.5 px-3 text-left text-[12px] font-semibold text-[#374151]">Função</th>
-                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Previsto</th>
-                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Presente</th>
-                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Falta Justificada</th>
-                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Ausente</th>
-                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Ações</th>
+                    <th className="py-2.5 px-3 text-left text-[12px] font-semibold text-[#374151]">
+                      Função
+                    </th>
+                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">
+                      Previsto
+                    </th>
+                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">
+                      Presente
+                    </th>
+                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">
+                      Falta Justificada
+                    </th>
+                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">
+                      Ausente
+                    </th>
+                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -598,7 +642,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                           value={row.previsto}
                           onChange={(e) => {
                             const val = parseInt(e.target.value) || 0;
-                            setEfetivo(efetivo.map((r, i) => i === idx ? { ...r, previsto: val } : r));
+                            setEfetivo(
+                              efetivo.map((r, i) => (i === idx ? { ...r, previsto: val } : r))
+                            );
                           }}
                           className="w-12 h-[32px] text-center rounded-[4px] border border-[#e5e7eb] text-[13px] text-[#374151] bg-white outline-none focus:border-[#ff5a00]"
                         />
@@ -609,7 +655,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                           value={row.presente}
                           onChange={(e) => {
                             const val = parseInt(e.target.value) || 0;
-                            setEfetivo(efetivo.map((r, i) => i === idx ? { ...r, presente: val } : r));
+                            setEfetivo(
+                              efetivo.map((r, i) => (i === idx ? { ...r, presente: val } : r))
+                            );
                           }}
                           className="w-12 h-[32px] text-center rounded-[4px] border border-[#e5e7eb] text-[13px] text-[#374151] bg-white outline-none focus:border-[#ff5a00]"
                         />
@@ -620,7 +668,11 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                           value={row.faltaJustificada}
                           onChange={(e) => {
                             const val = parseInt(e.target.value) || 0;
-                            setEfetivo(efetivo.map((r, i) => i === idx ? { ...r, faltaJustificada: val } : r));
+                            setEfetivo(
+                              efetivo.map((r, i) =>
+                                i === idx ? { ...r, faltaJustificada: val } : r
+                              )
+                            );
                           }}
                           className="w-12 h-[32px] text-center rounded-[4px] border border-[#e5e7eb] text-[13px] text-[#374151] bg-white outline-none focus:border-[#ff5a00]"
                         />
@@ -631,7 +683,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                           value={row.ausente}
                           onChange={(e) => {
                             const val = parseInt(e.target.value) || 0;
-                            setEfetivo(efetivo.map((r, i) => i === idx ? { ...r, ausente: val } : r));
+                            setEfetivo(
+                              efetivo.map((r, i) => (i === idx ? { ...r, ausente: val } : r))
+                            );
                           }}
                           className="w-12 h-[32px] text-center rounded-[4px] border border-[#e5e7eb] text-[13px] text-[#374151] bg-white outline-none focus:border-[#ff5a00]"
                         />
@@ -650,10 +704,18 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                   {efetivo.length > 0 && (
                     <tr className="bg-[#fff7f0]">
                       <td className="py-3 px-3 font-bold text-[#ff5a00] text-[13px]">TOTAL</td>
-                      <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">{totalPrevisto}</td>
-                      <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">{totalPresente}</td>
-                      <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">{totalFalta}</td>
-                      <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">{totalAusente}</td>
+                      <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">
+                        {totalPrevisto}
+                      </td>
+                      <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">
+                        {totalPresente}
+                      </td>
+                      <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">
+                        {totalFalta}
+                      </td>
+                      <td className="py-3 px-3 text-center font-bold text-[#ff5a00] text-[13px]">
+                        {totalAusente}
+                      </td>
                       <td></td>
                     </tr>
                   )}
@@ -661,7 +723,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
               </table>
             </div>
             {efetivo.length === 0 && (
-              <p className="text-[13px] text-[#9aa3ad] text-center py-4">Nenhuma função cadastrada. Adicione abaixo.</p>
+              <p className="text-[13px] text-[#9aa3ad] text-center py-4">
+                Nenhuma função cadastrada. Adicione abaixo.
+              </p>
             )}
             <div className="mt-3 flex items-center gap-2">
               <input
@@ -670,7 +734,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                 onChange={(e) => setNovaFuncao(e.target.value)}
                 placeholder="Nova função..."
                 className="h-[36px] flex-1 rounded-[4px] border border-[#e5e7eb] px-3 text-[13px] text-[#374151] outline-none focus:border-[#ff5a00]"
-                onKeyDown={(e) => e.key === "Enter" && handleAddFuncao()}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddFuncao()}
               />
               <Button
                 onClick={handleAddFuncao}
@@ -683,14 +747,28 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
           </Card>
 
           {/* Card 5: Fotos do Dia */}
-          <Card numero={5} titulo="FOTOS DO DIA" icone={<Camera className="h-5 w-5 text-[#ff5a00]" />}>
+          <Card
+            numero={5}
+            titulo="FOTOS DO DIA"
+            icone={<Camera className="h-5 w-5 text-[#ff5a00]" />}
+          >
             <div className="flex justify-between items-center mb-3">
               <span className="text-[12px] text-[#64707c]">{fotos.length}/10 fotos</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {fotos.map((foto) => (
-                <div key={foto.id} className="relative group rounded-[8px] overflow-hidden border border-[#e5e7eb] bg-white">
-                  <img src={foto.src} alt={foto.legenda} className="w-full h-[120px] object-cover" />
+                <div
+                  key={foto.id}
+                  className="relative group rounded-[8px] overflow-hidden border border-[#e5e7eb] bg-white"
+                >
+                  <Image
+                    src={foto.src}
+                    alt={foto.legenda}
+                    width={320}
+                    height={120}
+                    unoptimized
+                    className="h-[120px] w-full object-cover"
+                  />
                   <button
                     onClick={() => handleRemoveFoto(foto.id)}
                     className="absolute top-2 right-2 h-6 w-6 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-sm"
@@ -710,36 +788,50 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                 </button>
               )}
             </div>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+            />
           </Card>
         </div>
 
         {/* ─── COLUNA DIREITA ─── */}
         <div className="space-y-6">
           {/* Card 2: Condições Climáticas */}
-          <Card numero={2} titulo="CONDIÇÕES CLIMÁTICAS" icone={<CloudSun className="h-5 w-5 text-[#ff5a00]" />}>
+          <Card
+            numero={2}
+            titulo="CONDIÇÕES CLIMÁTICAS"
+            icone={<CloudSun className="h-5 w-5 text-[#ff5a00]" />}
+          >
             <div className="grid grid-cols-2 gap-6">
               {/* Manhã */}
               <div>
                 <label className="block text-[12px] font-medium text-[#64707c] mb-2">Manhã</label>
                 <div className="flex gap-2 mb-3">
-                  {(["sol", "nublado", "chuva", "encoberto"] as const).map((tipo) => (
+                  {(['sol', 'nublado', 'chuva', 'encoberto'] as const).map((tipo) => (
                     <button
                       key={tipo}
                       onClick={() => setClimaManha(tipo)}
                       className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center border-2 transition",
-                        climaManha === tipo ? "border-[#ff5a00] bg-[#fff7f0]" : "border-[#e5e7eb] bg-white hover:border-[#ff5a00]/50"
+                        'h-10 w-10 rounded-full flex items-center justify-center border-2 transition',
+                        climaManha === tipo
+                          ? 'border-[#ff5a00] bg-[#fff7f0]'
+                          : 'border-[#e5e7eb] bg-white hover:border-[#ff5a00]/50'
                       )}
                     >
-                      {tipo === "sol" && <Sun className="h-5 w-5 text-orange-400" />}
-                      {tipo === "nublado" && <CloudSun className="h-5 w-5 text-gray-400" />}
-                      {tipo === "chuva" && <CloudRain className="h-5 w-5 text-blue-400" />}
-                      {tipo === "encoberto" && <Cloud className="h-5 w-5 text-gray-500" />}
+                      {tipo === 'sol' && <Sun className="h-5 w-5 text-orange-400" />}
+                      {tipo === 'nublado' && <CloudSun className="h-5 w-5 text-gray-400" />}
+                      {tipo === 'chuva' && <CloudRain className="h-5 w-5 text-blue-400" />}
+                      {tipo === 'encoberto' && <Cloud className="h-5 w-5 text-gray-500" />}
                     </button>
                   ))}
                 </div>
-                <label className="block text-[12px] font-medium text-[#64707c] mb-1">Temperatura</label>
+                <label className="block text-[12px] font-medium text-[#64707c] mb-1">
+                  Temperatura
+                </label>
                 <div className="relative">
                   <Input
                     type="number"
@@ -747,30 +839,36 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                     onChange={(e) => setTempManha(e.target.value)}
                     className="h-[42px] w-full pr-8 bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px]"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#9aa3ad]">°C</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#9aa3ad]">
+                    °C
+                  </span>
                 </div>
               </div>
               {/* Tarde */}
               <div>
                 <label className="block text-[12px] font-medium text-[#64707c] mb-2">Tarde</label>
                 <div className="flex gap-2 mb-3">
-                  {(["sol", "nublado", "chuva", "encoberto"] as const).map((tipo) => (
+                  {(['sol', 'nublado', 'chuva', 'encoberto'] as const).map((tipo) => (
                     <button
                       key={tipo}
                       onClick={() => setClimaTarde(tipo)}
                       className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center border-2 transition",
-                        climaTarde === tipo ? "border-[#ff5a00] bg-[#fff7f0]" : "border-[#e5e7eb] bg-white hover:border-[#ff5a00]/50"
+                        'h-10 w-10 rounded-full flex items-center justify-center border-2 transition',
+                        climaTarde === tipo
+                          ? 'border-[#ff5a00] bg-[#fff7f0]'
+                          : 'border-[#e5e7eb] bg-white hover:border-[#ff5a00]/50'
                       )}
                     >
-                      {tipo === "sol" && <Sun className="h-5 w-5 text-orange-400" />}
-                      {tipo === "nublado" && <CloudSun className="h-5 w-5 text-gray-400" />}
-                      {tipo === "chuva" && <CloudRain className="h-5 w-5 text-blue-400" />}
-                      {tipo === "encoberto" && <Cloud className="h-5 w-5 text-gray-500" />}
+                      {tipo === 'sol' && <Sun className="h-5 w-5 text-orange-400" />}
+                      {tipo === 'nublado' && <CloudSun className="h-5 w-5 text-gray-400" />}
+                      {tipo === 'chuva' && <CloudRain className="h-5 w-5 text-blue-400" />}
+                      {tipo === 'encoberto' && <Cloud className="h-5 w-5 text-gray-500" />}
                     </button>
                   ))}
                 </div>
-                <label className="block text-[12px] font-medium text-[#64707c] mb-1">Temperatura</label>
+                <label className="block text-[12px] font-medium text-[#64707c] mb-1">
+                  Temperatura
+                </label>
                 <div className="relative">
                   <Input
                     type="number"
@@ -778,22 +876,36 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                     onChange={(e) => setTempTarde(e.target.value)}
                     className="h-[42px] w-full pr-8 bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px]"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#9aa3ad]">°C</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[#9aa3ad]">
+                    °C
+                  </span>
                 </div>
               </div>
             </div>
           </Card>
 
           {/* Card 4: Atividades Executadas */}
-          <Card numero={4} titulo="ATIVIDADES EXECUTADAS" icone={<ClipboardList className="h-5 w-5 text-[#ff5a00]" />}>
+          <Card
+            numero={4}
+            titulo="ATIVIDADES EXECUTADAS"
+            icone={<ClipboardList className="h-5 w-5 text-[#ff5a00]" />}
+          >
             <div className="overflow-x-auto">
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="border-b border-[#e5e7eb]">
-                    <th className="py-2.5 px-3 text-left text-[12px] font-semibold text-[#374151]">Etapa</th>
-                    <th className="py-2.5 px-3 text-left text-[12px] font-semibold text-[#374151]">Descrição</th>
-                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">% exec. hoje</th>
-                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">Ações</th>
+                    <th className="py-2.5 px-3 text-left text-[12px] font-semibold text-[#374151]">
+                      Etapa
+                    </th>
+                    <th className="py-2.5 px-3 text-left text-[12px] font-semibold text-[#374151]">
+                      Descrição
+                    </th>
+                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">
+                      % exec. hoje
+                    </th>
+                    <th className="py-2.5 px-3 text-center text-[12px] font-semibold text-[#374151]">
+                      Ações
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -808,7 +920,11 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                             value={at.percentual}
                             onChange={(e) => {
                               const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
-                              setAtividades(atividades.map(a => a.id === at.id ? { ...a, percentual: val } : a));
+                              setAtividades(
+                                atividades.map((a) =>
+                                  a.id === at.id ? { ...a, percentual: val } : a
+                                )
+                              );
                             }}
                             className="w-12 h-[32px] text-center rounded-[4px] border border-[#e5e7eb] text-[13px] text-[#374151] bg-white outline-none focus:border-[#ff5a00]"
                           />
@@ -816,7 +932,10 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <button onClick={() => handleRemoveAtividade(at.id)} className="p-1 hover:bg-red-50 rounded">
+                        <button
+                          onClick={() => handleRemoveAtividade(at.id)}
+                          className="p-1 hover:bg-red-50 rounded"
+                        >
                           <Trash2 className="h-4 w-4 text-red-400 hover:text-red-600" />
                         </button>
                       </td>
@@ -826,7 +945,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
               </table>
             </div>
             {atividades.length === 0 && (
-              <p className="text-[13px] text-[#9aa3ad] text-center py-4">Nenhuma atividade registrada.</p>
+              <p className="text-[13px] text-[#9aa3ad] text-center py-4">
+                Nenhuma atividade registrada.
+              </p>
             )}
             {/* Adicionar atividade */}
             {!showAddAtividade ? (
@@ -858,17 +979,30 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                     placeholder="%"
                     className="h-[36px] w-24 rounded-[4px] border border-[#e5e7eb] px-3 text-[13px] text-[#374151] outline-none focus:border-[#ff5a00]"
                   />
-                  <Button onClick={handleAddAtividade} className="h-[36px] bg-[#ff5a00] text-white hover:bg-[#ef5200]">
+                  <Button
+                    onClick={handleAddAtividade}
+                    className="h-[36px] bg-[#ff5a00] text-white hover:bg-[#ef5200]"
+                  >
                     <Plus className="h-4 w-4 mr-1" /> Adicionar
                   </Button>
-                  <Button onClick={() => setShowAddAtividade(false)} variant="outline" className="h-[36px]">Cancelar</Button>
+                  <Button
+                    onClick={() => setShowAddAtividade(false)}
+                    variant="outline"
+                    className="h-[36px]"
+                  >
+                    Cancelar
+                  </Button>
                 </div>
               </div>
             )}
           </Card>
 
           {/* Card 6: Assinatura Digital */}
-          <Card numero={6} titulo="ASSINATURA DIGITAL" icone={<Pen className="h-5 w-5 text-[#ff5a00]" />}>
+          <Card
+            numero={6}
+            titulo="ASSINATURA DIGITAL"
+            icone={<Pen className="h-5 w-5 text-[#ff5a00]" />}
+          >
             <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-4">
               <div className="relative">
                 <canvas
@@ -883,7 +1017,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                   onTouchMove={draw}
                   onTouchEnd={stopDrawing}
                   className="w-full h-[120px] rounded-[6px] border border-dashed border-[#d1d5db] bg-[#f9fafb] touch-none"
-                  style={{ cursor: "crosshair" }}
+                  style={{ cursor: 'crosshair' }}
                 />
                 {!assinado && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -894,14 +1028,21 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                   </div>
                 )}
                 <div className="flex gap-2 mt-2">
-                  <Button onClick={clearSignature} variant="outline" size="sm" className="text-[11px] h-7">
+                  <Button
+                    onClick={clearSignature}
+                    variant="outline"
+                    size="sm"
+                    className="text-[11px] h-7"
+                  >
                     Limpar
                   </Button>
                 </div>
               </div>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">CREA</label>
+                  <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">
+                    CREA
+                  </label>
                   <Input
                     value={crea}
                     onChange={(e) => setCrea(e.target.value)}
@@ -910,7 +1051,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">Nome</label>
+                  <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">
+                    Nome
+                  </label>
                   <Input
                     value={nomeAssinatura}
                     onChange={(e) => setNomeAssinatura(e.target.value)}
@@ -924,13 +1067,15 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
               <button
                 onClick={() => setConfirmado(!confirmado)}
                 className={cn(
-                  "flex h-5 w-5 items-center justify-center rounded border-2 transition",
-                  confirmado ? "border-[#ff5a00] bg-[#ff5a00]" : "border-[#d1d5db] bg-white"
+                  'flex h-5 w-5 items-center justify-center rounded border-2 transition',
+                  confirmado ? 'border-[#ff5a00] bg-[#ff5a00]' : 'border-[#d1d5db] bg-white'
                 )}
               >
                 {confirmado && <Check className="h-3 w-3 text-white" />}
               </button>
-              <span className="text-[12px] text-[#64707c]">Confirmo que as informações acima são verdadeiras</span>
+              <span className="text-[12px] text-[#64707c]">
+                Confirmo que as informações acima são verdadeiras
+              </span>
             </div>
           </Card>
         </div>
@@ -940,7 +1085,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
       <div className="mt-8 flex items-center justify-between gap-3">
         <Button
           variant="outline"
-          onClick={() => router.push("/rdo")}
+          onClick={() => router.push('/rdo')}
           className="h-[44px] px-6 border-[#d1d5db] text-[#374151] text-[14px] font-medium rounded-[6px]"
         >
           Cancelar
@@ -949,7 +1094,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
           <span className="text-[12px] text-[#9aa3ad]">Rascunho salvo automaticamente</span>
           <Button
             variant="outline"
-            onClick={() => handleSalvar("RASCUNHO")}
+            onClick={() => handleSalvar('RASCUNHO')}
             disabled={saving}
             className="h-[44px] px-6 border-[#d1d5db] text-[#374151] text-[14px] font-medium rounded-[6px]"
           >
@@ -957,7 +1102,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
             Salvar Rascunho
           </Button>
           <Button
-            onClick={() => handleSalvar("APROVADO")}
+            onClick={() => handleSalvar('APROVADO')}
             disabled={saving || !confirmado}
             className="h-[44px] px-6 bg-[#ff5a00] text-white text-[14px] font-medium rounded-[6px] hover:bg-[#ef5200] shadow-[0_4px_12px_rgba(255,90,0,.2)] disabled:opacity-50 disabled:cursor-not-allowed"
           >

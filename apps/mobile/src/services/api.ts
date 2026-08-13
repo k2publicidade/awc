@@ -2,7 +2,7 @@ import axios from "axios";
 import { getApiUrl } from "./config";
 
 /**
- * Cliente HTTP do ObrasAWC mobile.
+ * Cliente HTTP do RIGOR mobile.
  *
  * Autenticação: fluxo de credenciais do NextAuth (mesmo backend da web).
  * O React Native gerencia cookies na camada nativa, então o cookie de sessão

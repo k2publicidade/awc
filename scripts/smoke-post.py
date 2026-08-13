@@ -12,7 +12,7 @@ jar = http.cookiejar.CookieJar()
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
 csrf = json.loads(opener.open(base + '/api/auth/csrf', timeout=60).read().decode())['csrfToken']
-body = urllib.parse.urlencode({'csrfToken': csrf, 'email': 'admin@awc.com.br', 'password': 'admin123',
+body = urllib.parse.urlencode({'csrfToken': csrf, 'email': 'admin@demo.rigor.local', 'password': 'admin123',
                                'callbackUrl': base + '/dashboard', 'json': 'true'}).encode()
 opener.open(urllib.request.Request(base + '/api/auth/callback/credentials', data=body,
             headers={'Content-Type': 'application/x-www-form-urlencoded'}), timeout=60)

@@ -1,6 +1,6 @@
 import * as SQLite from "expo-sqlite";
 
-const DB_NAME = "obras_awc.db";
+const DB_NAME = "rigor.db";
 
 let db: SQLite.SQLiteDatabase | null = null;
 

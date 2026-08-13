@@ -8,11 +8,11 @@ async function main() {
 
   // Create tenant
   const tenant = await prisma.tenant.upsert({
-    where: { slug: "awc" },
+    where: { slug: "demo" },
     update: {},
     create: {
-      name: "AWC Pree Moldados",
-      slug: "awc",
+      name: "Empresa Demonstração",
+      slug: "demo",
       primaryColor: "#FF6B00",
     },
   });
@@ -21,12 +21,12 @@ async function main() {
 
   // Create users
   const users = [
-    { name: "Admin AWC", email: "admin@awc.com.br", role: "SUPER_ADMIN" as const, password: "admin123" },
-    { name: "Carlos Engenheiro", email: "engenheiro@awc.com.br", role: "ENGENHEIRO" as const, password: "eng123" },
-    { name: "Joao Encarregado", email: "encarregado@awc.com.br", role: "ENCARREGADO" as const, password: "enc123" },
-    { name: "Maria Financeiro", email: "financeiro@awc.com.br", role: "FINANCEIRO" as const, password: "fin123" },
-    { name: "Pedro Almoxarife", email: "almoxarife@awc.com.br", role: "ALMOXARIFE" as const, password: "alm123" },
-    { name: "Cliente Demo", email: "cliente@awc.com.br", role: "CLIENTE" as const, password: "cli123" },
+    { name: "Administrador Demo", email: "admin@demo.rigor.local", role: "SUPER_ADMIN" as const, password: "admin123" },
+    { name: "Carlos Engenheiro", email: "engenheiro@demo.rigor.local", role: "ENGENHEIRO" as const, password: "eng123" },
+    { name: "Joao Encarregado", email: "encarregado@demo.rigor.local", role: "ENCARREGADO" as const, password: "enc123" },
+    { name: "Maria Financeiro", email: "financeiro@demo.rigor.local", role: "FINANCEIRO" as const, password: "fin123" },
+    { name: "Pedro Almoxarife", email: "almoxarife@demo.rigor.local", role: "ALMOXARIFE" as const, password: "alm123" },
+    { name: "Cliente Demo", email: "cliente@demo.rigor.local", role: "CLIENTE" as const, password: "cli123" },
   ];
 
   for (const userData of users) {
@@ -45,13 +45,13 @@ async function main() {
     console.log(`User: ${user.name} (${user.role})`);
   }
 
-  const engenheiro = await prisma.user.findUnique({ where: { email: "engenheiro@awc.com.br" } });
-  const cliente = await prisma.user.findUnique({ where: { email: "cliente@awc.com.br" } });
+  const engenheiro = await prisma.user.findUnique({ where: { email: "engenheiro@demo.rigor.local" } });
+  const cliente = await prisma.user.findUnique({ where: { email: "cliente@demo.rigor.local" } });
 
   // Create sample obras
   const obrasData = [
     {
-      codigo: "AWC-2026-001",
+      codigo: "DEMO-2026-001",
       nome: "Galpao Industrial XYZ",
       tipo: "GALPAO" as const,
       endereco: "Rod. BR-101, km 45 - Itajai/SC",
@@ -65,7 +65,7 @@ async function main() {
       status: "EM_ANDAMENTO" as const,
     },
     {
-      codigo: "AWC-2026-002",
+      codigo: "DEMO-2026-002",
       nome: "Edificio Comercial Center",
       tipo: "EDIFICIO" as const,
       endereco: "Rua XV de Novembro, 200 - Blumenau/SC",
@@ -79,7 +79,7 @@ async function main() {
       status: "EM_ANDAMENTO" as const,
     },
     {
-      codigo: "AWC-2026-003",
+      codigo: "DEMO-2026-003",
       nome: "Ponte Passarela Rodoviaria",
       tipo: "PONTE" as const,
       endereco: "Av. Beira Rio, s/n - Gaspar/SC",
@@ -199,12 +199,12 @@ async function main() {
 
   console.log("\n=== Seed completed! ===");
   console.log("Login credentials:");
-  console.log("  Admin:       admin@awc.com.br / admin123");
-  console.log("  Engenheiro:  engenheiro@awc.com.br / eng123");
-  console.log("  Encarregado: encarregado@awc.com.br / enc123");
-  console.log("  Financeiro:  financeiro@awc.com.br / fin123");
-  console.log("  Almoxarife:  almoxarife@awc.com.br / alm123");
-  console.log("  Cliente:     cliente@awc.com.br / cli123");
+  console.log("  Admin:       admin@demo.rigor.local / admin123");
+  console.log("  Engenheiro:  engenheiro@demo.rigor.local / eng123");
+  console.log("  Encarregado: encarregado@demo.rigor.local / enc123");
+  console.log("  Financeiro:  financeiro@demo.rigor.local / fin123");
+  console.log("  Almoxarife:  almoxarife@demo.rigor.local / alm123");
+  console.log("  Cliente:     cliente@demo.rigor.local / cli123");
 }
 
 main()

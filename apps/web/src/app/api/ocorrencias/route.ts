@@ -1,40 +1,48 @@
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { requireSession } from '@/lib/session-context';
+import { assertTenantRelations, canAccessResource } from '@/lib/authorization';
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'ocorrencias'))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
-  const obraId = searchParams.get("obraId");
-  const status = searchParams.get("status");
-  const where: any = {};
+  const obraId = searchParams.get('obraId');
+  const status = searchParams.get('status');
+  const where: DynamicValue = { obra: { tenantId: context.tenantId } };
   if (obraId) where.obraId = obraId;
   if (status) where.status = status;
 
   const ocorrencias = await prisma.ocorrencia.findMany({
-    where, include: { obra: { select: { nome: true } } },
-    orderBy: { dataAbertura: "desc" },
+    where,
+    include: { obra: { select: { nome: true } } },
+    orderBy: { dataAbertura: 'desc' },
   });
 
   return NextResponse.json(ocorrencias);
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'ocorrencias', true))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const body = await req.json();
+  await assertTenantRelations({ obraId: body.obraId, etapaId: body.etapaId }, context.tenantId);
   const ocorrencia = await prisma.ocorrencia.create({
     data: {
       dataAbertura: body.data ? new Date(body.data) : new Date(),
-      tipo: body.tipo, descricao: body.descricao,
-      obraId: body.obraId, etapaId: body.etapaId || null,
+      tipo: body.tipo,
+      descricao: body.descricao,
+      obraId: body.obraId,
+      etapaId: body.etapaId || null,
       impactoDias: body.impactoPrazoDias || body.impactoDias || 0,
-      responsavelAberturaId: (session.user as any).id || null,
-      status: "ABERTO",
+      responsavelAberturaId: context.userId,
+      status: 'ABERTO',
     },
   });
 

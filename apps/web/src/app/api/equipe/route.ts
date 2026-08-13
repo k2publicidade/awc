@@ -1,34 +1,43 @@
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { requireSession } from '@/lib/session-context';
+import { canAccessResource } from '@/lib/authorization';
 
-export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+export async function GET() {
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'equipe'))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const trabalhadores = await prisma.trabalhador.findMany({
-    include: { epiEntregas: true, exames: true, presencas: { orderBy: { data: "desc" }, take: 5 } },
-    orderBy: { nome: "asc" },
+    where: { tenantId: context.tenantId },
+    include: { epiEntregas: true, exames: true, presencas: { orderBy: { data: 'desc' }, take: 5 } },
+    orderBy: { nome: 'asc' },
   });
 
   return NextResponse.json(trabalhadores);
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'equipe', true))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const body = await req.json();
-  const tenantId = (session.user as any).tenantId as string;
+  const tenantId = context.tenantId;
   const trabalhador = await prisma.trabalhador.create({
     data: {
       tenantId,
-      nome: body.nome, cpf: body.cpf, funcao: body.funcao, vinculo: body.vinculo,
-      telefone: body.telefone || null, email: body.email || null,
+      nome: body.nome,
+      cpf: body.cpf,
+      funcao: body.funcao,
+      vinculo: body.vinculo,
+      telefone: body.telefone || null,
+      email: body.email || null,
       dataAdmissao: body.dataAdmissao ? new Date(body.dataAdmissao) : null,
       ...(body.dataExameMedico
-        ? { exames: { create: { tipo: "ASO", dataRealizacao: new Date(body.dataExameMedico) } } }
+        ? { exames: { create: { tipo: 'ASO', dataRealizacao: new Date(body.dataExameMedico) } } }
         : {}),
     },
   });

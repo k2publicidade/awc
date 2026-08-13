@@ -24,10 +24,10 @@ export function LoginScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       <View style={styles.card}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>AWC</Text>
-          <Text style={styles.logoSub}>Pré Moldados</Text>
+          <Text style={styles.logoText}>RIGOR</Text>
+          <Text style={styles.logoSub}>Gestão de obras</Text>
         </View>
-        <Text style={styles.title}>ObrasAWC</Text>
+        <Text style={styles.title}>RIGOR</Text>
         <Text style={styles.subtitle}>Sistema de Gestão de Obras</Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}

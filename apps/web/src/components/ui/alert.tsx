@@ -1,20 +1,20 @@
-import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-awc-gray",
+  'relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-rigor-gray',
   {
     variants: {
       variant: {
-        default: "bg-white text-awc-dark",
-        destructive: "border-awc-danger/50 text-awc-danger [&>svg]:text-awc-danger bg-red-50",
-        success: "border-awc-success/50 text-awc-success [&>svg]:text-awc-success bg-green-50",
-        warning: "border-awc-warning/50 text-awc-warning [&>svg]:text-awc-warning bg-amber-50",
+        default: 'bg-white text-rigor-dark',
+        destructive: 'border-rigor-danger/50 text-rigor-danger [&>svg]:text-rigor-danger bg-red-50',
+        success: 'border-rigor-success/50 text-rigor-success [&>svg]:text-rigor-success bg-green-50',
+        warning: 'border-rigor-warning/50 text-rigor-warning [&>svg]:text-rigor-warning bg-amber-50',
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: 'default',
     },
   }
 );
@@ -25,20 +25,25 @@ const Alert = React.forwardRef<
 >(({ className, variant, ...props }, ref) => (
   <div ref={ref} role="alert" className={cn(alertVariants({ variant }), className)} {...props} />
 ));
-Alert.displayName = "Alert";
+Alert.displayName = 'Alert';
 
 const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h5 ref={ref} className={cn("mb-1 font-medium leading-none tracking-tight", className)} {...props} />
+    <h5
+      ref={ref}
+      className={cn('mb-1 font-medium leading-none tracking-tight', className)}
+      {...props}
+    />
   )
 );
-AlertTitle.displayName = "AlertTitle";
+AlertTitle.displayName = 'AlertTitle';
 
-const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("text-sm [&_p]:leading-relaxed", className)} {...props} />
-  )
-);
-AlertDescription.displayName = "AlertDescription";
+const AlertDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn('text-sm [&_p]:leading-relaxed', className)} {...props} />
+));
+AlertDescription.displayName = 'AlertDescription';
 
 export { Alert, AlertTitle, AlertDescription };

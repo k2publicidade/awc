@@ -1,5 +1,5 @@
 /**
- * ObrasAWC - Database Package
+ * RIGOR - Database Package
  * Single Prisma Client instance (singleton pattern)
  */
 import { PrismaClient } from '@prisma/client';

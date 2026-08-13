@@ -1,6 +1,6 @@
 /**
- * ObrasAWC - Shared TypeScript Types
- * AWC Pré Moldados - Construction Management System
+ * RIGOR - Shared TypeScript Types
+ * RIGOR - Construction Management Platform
  */
 
 // ============================================================

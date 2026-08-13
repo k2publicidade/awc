@@ -1,14 +1,16 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { AppLayout } from "@/components/layout/app-layout";
+import { redirect } from 'next/navigation';
+import { AppLayout } from '@/components/layout/app-layout';
+import { requireSession } from '@/lib/session-context';
 
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
+  const context = await requireSession(undefined, { allowPasswordChange: true });
 
-  if (!session) {
-    redirect("/login");
+  if (!context) {
+    redirect('/login');
   }
+
+  if (context.mustChangePassword) redirect('/change-password');
+  if (context.role === 'MASTER_ADMIN') redirect('/master');
 
   return <AppLayout>{children}</AppLayout>;
 }

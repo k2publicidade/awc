@@ -17,7 +17,7 @@ def login(email, senha):
     return op
 
 
-admin = login('admin@awc.com.br', 'admin123')
+admin = login('admin@demo.rigor.local', 'admin123')
 
 # 1. pagina configuracoes
 r = admin.open(base + '/configuracoes', timeout=120)
@@ -28,7 +28,7 @@ us = json.loads(admin.open(base + '/api/usuarios').read().decode())
 print('usuarios:', len(us))
 
 # 3. criar usuario via register autenticado como admin
-payload = {'name': 'Usuario Smoke', 'email': 'smoke@awc.com.br', 'password': 'smoke123',
+payload = {'name': 'Usuario Smoke', 'email': 'smoke@demo.rigor.local', 'password': 'smoke123',
            'confirmPassword': 'smoke123', 'role': 'ENCARREGADO'}
 try:
     r = admin.open(urllib.request.Request(base + '/api/auth/register', data=json.dumps(payload).encode(),
@@ -58,7 +58,7 @@ if novo:
     print('desativado:', json.loads(r.read().decode())['isActive'] is False)
 
 # 6. listar usuarios como nao-admin deve dar 403
-enc = login('encarregado@awc.com.br', 'admin123')
+enc = login('encarregado@demo.rigor.local', 'admin123')
 try:
     enc.open(base + '/api/usuarios')
     print('FAIL: nao-admin listou usuarios')

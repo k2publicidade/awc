@@ -1,37 +1,49 @@
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { requireSession } from '@/lib/session-context';
+import { assertTenantRelations, canAccessResource } from '@/lib/authorization';
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'orcamentos'))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
-  const obraId = searchParams.get("obraId");
-  const where: any = {};
+  const obraId = searchParams.get('obraId');
+  const where: DynamicValue = { obra: { tenantId: context.tenantId } };
   if (obraId) where.obraId = obraId;
 
   const orcamentos = await prisma.orcamento.findMany({
-    where, include: { obra: { select: { nome: true, codigo: true } }, versoes: { orderBy: { versao: "desc" }, take: 1 } },
-    orderBy: { createdAt: "desc" },
+    where,
+    include: {
+      obra: { select: { nome: true, codigo: true } },
+      versoes: { orderBy: { versao: 'desc' }, take: 1 },
+    },
+    orderBy: { createdAt: 'desc' },
   });
 
   return NextResponse.json(orcamentos);
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const context = await requireSession();
+  if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!canAccessResource(context.role, 'orcamentos', true))
+    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const body = await req.json();
+  await assertTenantRelations({ obraId: body.obraId }, context.tenantId);
   const orcamento = await prisma.orcamento.create({
     data: {
-      obraId: body.obraId, status: "EM_ELABORACAO",
+      obraId: body.obraId,
+      status: 'EM_ELABORACAO',
       valorTotal: body.valorTotal || 0,
       justificativa: body.nome || body.justificativa || null,
-      createdBy: (session.user as any).id || null,
-      versoes: { create: { versao: 1, valorTotal: body.valorTotal || 0, justificativa: "Versão inicial" } },
+      createdBy: context.userId,
+      versoes: {
+        create: { versao: 1, valorTotal: body.valorTotal || 0, justificativa: 'Versão inicial' },
+      },
     },
   });
 

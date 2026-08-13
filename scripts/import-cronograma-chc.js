@@ -13,7 +13,7 @@ if (!process.env.DATABASE_URL) {
 const { PrismaClient } = require(path.join(__dirname, "..", "node_modules", "@prisma/client"));
 const prisma = new PrismaClient();
 
-const DEMO_CODIGOS = ["AWC-2026-001", "AWC-2026-002", "AWC-2026-003"];
+const DEMO_CODIGOS = ["DEMO-2026-001", "DEMO-2026-002", "DEMO-2026-003"];
 const STATUS_DATE = new Date("2026-05-08T16:30:00");
 
 // Percentual previsto na data de status: interpolação linear entre início e fim planejados.

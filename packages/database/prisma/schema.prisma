@@ -1,5 +1,5 @@
-// ObrasAWC - Prisma Schema
-// AWC Pré Moldados - Construction Management System
+// RIGOR - Prisma Schema
+// RIGOR - Construction Management Platform
 
 generator client {
   provider = "prisma-client-js"
@@ -16,6 +16,7 @@ datasource db {
 // ============================================================
 
 enum Role {
+  MASTER_ADMIN
   SUPER_ADMIN
   ADMIN
   ENGENHEIRO
@@ -277,138 +278,256 @@ enum NotificacaoCanal {
   PUSH
 }
 
+enum PlanoSaas {
+  STARTER
+  PRO
+  BUSINESS
+}
+
+enum AssinaturaStatus {
+  TRIAL
+  ATIVA
+  INADIMPLENTE
+  CANCELADA
+}
+
+enum CicloCobranca {
+  MONTHLY
+  SEMIANNUALLY
+  ANNUALLY
+}
+
+enum CheckoutStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
 // ============================================================
 // MODELS
 // ============================================================
 
 model Tenant {
-  id           String   @id @default(cuid())
-  name         String
-  slug         String   @unique
-  logoUrl      String?
-  primaryColor String   @default("#FF6B00")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String           @id @default(cuid())
+  name                 String
+  slug                 String           @unique
+  logoUrl              String?
+  primaryColor         String           @default("#FF6B00")
+  plan                 PlanoSaas        @default(STARTER)
+  subscriptionStatus   AssinaturaStatus @default(TRIAL)
+  trialEndsAt          DateTime?
+  onboardingCompleted  Boolean          @default(false)
+  document             String?
+  phone                String?
+  billingEmail         String?
+  stripeCustomerId     String?          @unique
+  stripeSubscriptionId String?          @unique
+  abacateCustomerId    String?          @unique
+  abacateSubscriptionId String?         @unique
+  billingCycle         CicloCobranca?
+  billingCurrentPeriodEnd DateTime?
+  isInternal           Boolean          @default(false)
+  isActive             Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
-  users  User[]
-  obras  Obra[]
-  fornecedores Fornecedor[]
-  materiais Material[]
+  users         User[]
+  obras         Obra[]
+  fornecedores  Fornecedor[]
+  materiais     Material[]
   trabalhadores Trabalhador[]
-  equipes EquipeObra[]
-  notificacoes Notificacao[]
+  equipes       EquipeObra[]
+  notificacoes  Notificacao[]
+  auditLogs     AuditLog[]
+  billingCheckouts BillingCheckout[]
 }
 
 model User {
-  id           String   @id @default(cuid())
-  tenantId     String
-  name         String
-  email        String   @unique
-  passwordHash String?
-  role         Role     @default(ENCARREGADO)
-  avatarUrl    String?
-  phone        String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  tenantId           String
+  name               String
+  email              String    @unique
+  passwordHash       String?
+  role               Role      @default(ENCARREGADO)
+  avatarUrl          String?
+  phone              String?
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  termsAcceptedAt    DateTime?
+  termsVersion       String?
+  privacyAcceptedAt  DateTime?
+  privacyVersion     String?
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  tenant       Tenant   @relation(fields: [tenantId], references: [id])
-  obrasEng     Obra[]   @relation("ObraEngenheiro")
-  obrasCliente Obra[]   @relation("ObraCliente")
-  rdoResponsavel RDO[]  @relation("RdoResponsavel")
-  notificacoes Notificacao[]
-  estoqueMovimentos EstoqueMovimento[] @relation("EstoqueResponsavel")
-  requisicoesSolicitante RequisicaoCompra[] @relation("ReqSolicitante")
-  requisicoesAprovador  RequisicaoCompra[] @relation("ReqAprovador")
-  ocorrenciasAbertura   Ocorrencia[]  @relation("OcorrenciaAbertura")
-  ocorrenciasEncerramento Ocorrencia[] @relation("OcorrenciaEncerramento")
-  inspecoesResponsavel  Inspecao[]    @relation("InspecaoResponsavel")
-  ncResponsavel         NaoConformidade[] @relation("NCResponsavel")
-  ddsResponsavel        DDS[]         @relation("DdsResponsavel")
-  documentosCreatedBy   Documento[]   @relation("DocumentoCreatedBy")
-  orcamentosCreatedBy   Orcamento[]   @relation("OrcamentoCreatedBy")
-  lancamentosCreatedBy  LancamentoFinanceiro[] @relation("LancamentoCreatedBy")
-  contratosCreatedBy    Contrato[]    @relation("ContratoCreatedBy")
-  medicoesCreatedBy     Medicao[]     @relation("MedicaoCreatedBy")
-  aprovadorEng          Medicao[]     @relation("MedicaoAprovadorEng")
-  aprovadorFin          Medicao[]     @relation("MedicaoAprovadorFin")
-  aprovadorCliente      Medicao[]     @relation("MedicaoAprovadorCliente")
+  tenant                  Tenant                 @relation(fields: [tenantId], references: [id])
+  obrasEng                Obra[]                 @relation("ObraEngenheiro")
+  obrasCliente            Obra[]                 @relation("ObraCliente")
+  rdoResponsavel          RDO[]                  @relation("RdoResponsavel")
+  notificacoes            Notificacao[]
+  estoqueMovimentos       EstoqueMovimento[]     @relation("EstoqueResponsavel")
+  requisicoesSolicitante  RequisicaoCompra[]     @relation("ReqSolicitante")
+  requisicoesAprovador    RequisicaoCompra[]     @relation("ReqAprovador")
+  ocorrenciasAbertura     Ocorrencia[]           @relation("OcorrenciaAbertura")
+  ocorrenciasEncerramento Ocorrencia[]           @relation("OcorrenciaEncerramento")
+  inspecoesResponsavel    Inspecao[]             @relation("InspecaoResponsavel")
+  ncResponsavel           NaoConformidade[]      @relation("NCResponsavel")
+  ddsResponsavel          DDS[]                  @relation("DdsResponsavel")
+  documentosCreatedBy     Documento[]            @relation("DocumentoCreatedBy")
+  orcamentosCreatedBy     Orcamento[]            @relation("OrcamentoCreatedBy")
+  lancamentosCreatedBy    LancamentoFinanceiro[] @relation("LancamentoCreatedBy")
+  contratosCreatedBy      Contrato[]             @relation("ContratoCreatedBy")
+  medicoesCreatedBy       Medicao[]              @relation("MedicaoCreatedBy")
+  aprovadorEng            Medicao[]              @relation("MedicaoAprovadorEng")
+  aprovadorFin            Medicao[]              @relation("MedicaoAprovadorFin")
+  aprovadorCliente        Medicao[]              @relation("MedicaoAprovadorCliente")
+  auditLogs               AuditLog[]             @relation("AuditActor")
 
   @@index([tenantId])
   @@index([email])
 }
 
+model BillingProduct {
+  id                String        @id @default(cuid())
+  providerProductId String        @unique
+  externalId        String
+  plan              PlanoSaas
+  cycle             CicloCobranca
+  priceCents        Int
+  devMode           Boolean       @default(true)
+  active            Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([plan, cycle, devMode])
+  @@unique([externalId, devMode])
+  @@index([active])
+}
+
+model BillingCheckout {
+  id                 String         @id @default(cuid())
+  tenantId           String
+  plan               PlanoSaas
+  cycle              CicloCobranca
+  providerCheckoutId String?        @unique
+  checkoutUrl        String?
+  status             CheckoutStatus @default(PENDING)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status, createdAt])
+}
+
+model BillingWebhookEvent {
+  id                     String   @id
+  eventType              String
+  providerSubscriptionId String?
+  tenantId               String?
+  devMode                Boolean
+  processedAt            DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([eventType])
+  @@index([processedAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  tenantId   String?
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  actor  User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([tenantId])
+  @@index([action])
+  @@index([createdAt])
+}
+
 model Obra {
-  id              String      @id @default(cuid())
+  id              String     @id @default(cuid())
   tenantId        String
   nome            String
-  codigo          String      @unique
+  codigo          String
   tipo            ObraTipo
   endereco        String?
   cidade          String?
   estado          String?
   latitude        Float?
   longitude       Float?
-  valorContratado Decimal     @default(0) @db.Decimal(14,2)
+  valorContratado Decimal    @default(0) @db.Decimal(14, 2)
   dataInicio      DateTime?
   dataPrevisaoFim DateTime?
   dataConclusao   DateTime?
-  status          ObraStatus  @default(PLANEJAMENTO)
+  status          ObraStatus @default(PLANEJAMENTO)
   engenheiroId    String?
   clienteId       String?
   descricao       String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  tenant          Tenant      @relation(fields: [tenantId], references: [id])
-  engenheiro      User?       @relation("ObraEngenheiro", fields: [engenheiroId], references: [id])
-  cliente         User?       @relation("ObraCliente", fields: [clienteId], references: [id])
-  etapas          Etapa[]
-  rdos            RDO[]
-  orcamentos      Orcamento[]
-  medicoes        Medicao[]
-  documentos      Documento[]
-  ocorrencias     Ocorrencia[]
-  inspecoes       Inspecao[]
-  lancamentos     LancamentoFinanceiro[]
-  notasFiscais    NotaFiscal[]
-  contratos       Contrato[]
-  naoConformidades NaoConformidade[]
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id])
+  engenheiro        User?                  @relation("ObraEngenheiro", fields: [engenheiroId], references: [id])
+  cliente           User?                  @relation("ObraCliente", fields: [clienteId], references: [id])
+  etapas            Etapa[]
+  rdos              RDO[]
+  orcamentos        Orcamento[]
+  medicoes          Medicao[]
+  documentos        Documento[]
+  ocorrencias       Ocorrencia[]
+  inspecoes         Inspecao[]
+  lancamentos       LancamentoFinanceiro[]
+  notasFiscais      NotaFiscal[]
+  contratos         Contrato[]
+  naoConformidades  NaoConformidade[]
   estoqueMovimentos EstoqueMovimento[]
-  requisicoes     RequisicaoCompra[]
-  presencas       Presenca[]
-  equipes         EquipeObra[]
-  fotos           Foto[]
-  pecaPreMoldadas PecaPreMoldada[]
-  dds             DDS[]
-  acidentes       Acidente[]
+  requisicoes       RequisicaoCompra[]
+  presencas         Presenca[]
+  equipes           EquipeObra[]
+  fotos             Foto[]
+  pecaPreMoldadas   PecaPreMoldada[]
+  dds               DDS[]
+  acidentes         Acidente[]
   cronogramaVersoes CronogramaVersao[]
 
+  @@unique([tenantId, codigo])
   @@index([tenantId])
   @@index([status])
   @@index([engenheiroId])
 }
 
 model Etapa {
-  id                String    @id @default(cuid())
-  obraId            String
-  nome              String
-  descricao         String?
-  dataInicio        DateTime?
-  dataFim           DateTime?
-  dataInicioReal    DateTime?
-  dataFimReal       DateTime?
-  percentualPrevisto Float    @default(0)
-  percentualRealizado Float   @default(0)
-  valorFinanceiro   Decimal   @default(0) @db.Decimal(14,2)
-  ordem             Int       @default(0)
-  cor               String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  obraId              String
+  nome                String
+  descricao           String?
+  dataInicio          DateTime?
+  dataFim             DateTime?
+  dataInicioReal      DateTime?
+  dataFimReal         DateTime?
+  percentualPrevisto  Float     @default(0)
+  percentualRealizado Float     @default(0)
+  valorFinanceiro     Decimal   @default(0) @db.Decimal(14, 2)
+  ordem               Int       @default(0)
+  cor                 String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  obra              Obra      @relation(fields: [obraId], references: [id])
-  predecessoras     Predecessor[] @relation("EtapaSucessora")
-  sucessoras        Predecessor[] @relation("EtapaPredecessora")
+  obra              Obra               @relation(fields: [obraId], references: [id])
+  predecessoras     Predecessor[]      @relation("EtapaSucessora")
+  sucessoras        Predecessor[]      @relation("EtapaPredecessora")
   rdoAtividades     RDOAtividade[]
   medicaoItens      MedicaoItem[]
   fotos             Foto[]
@@ -423,21 +542,21 @@ model Etapa {
 }
 
 model Predecessor {
-  id              String          @id @default(cuid())
-  etapaId         String
-  predecessoraId  String
-  tipo            PredecessoraTipo @default(FIM_INICIO)
-  createdAt       DateTime        @default(now())
+  id             String           @id @default(cuid())
+  etapaId        String
+  predecessoraId String
+  tipo           PredecessoraTipo @default(FIM_INICIO)
+  createdAt      DateTime         @default(now())
 
-  etapa           Etapa           @relation("EtapaSucessora", fields: [etapaId], references: [id])
-  predecessora    Etapa           @relation("EtapaPredecessora", fields: [predecessoraId], references: [id])
+  etapa        Etapa @relation("EtapaSucessora", fields: [etapaId], references: [id])
+  predecessora Etapa @relation("EtapaPredecessora", fields: [predecessoraId], references: [id])
 
   @@index([etapaId])
   @@index([predecessoraId])
 }
 
 model RDO {
-  id               String        @id @default(cuid())
+  id               String         @id @default(cuid())
   obraId           String
   data             DateTime
   numero           Int
@@ -450,19 +569,19 @@ model RDO {
   assinaturaNome   String?
   assinaturaCrea   String?
   observacoes      String?
-  status           RdoStatus     @default(RASCUNHO)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  status           RdoStatus      @default(RASCUNHO)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  obra             Obra          @relation(fields: [obraId], references: [id])
-  responsavel      User          @relation("RdoResponsavel", fields: [responsavelId], references: [id])
-  climas           RDOClima[]
-  efetivos         RDOEfetivo[]
-  atividades       RDOAtividade[]
-  ocorrenciasRdo   RDOOcorrencia[]
-  equipamentos     RDOEquipamento[]
-  fotos            Foto[]
-  presencas        Presenca[]
+  obra           Obra             @relation(fields: [obraId], references: [id])
+  responsavel    User             @relation("RdoResponsavel", fields: [responsavelId], references: [id])
+  climas         RDOClima[]
+  efetivos       RDOEfetivo[]
+  atividades     RDOAtividade[]
+  ocorrenciasRdo RDOOcorrencia[]
+  equipamentos   RDOEquipamento[]
+  fotos          Foto[]
+  presencas      Presenca[]
 
   @@unique([obraId, data])
   @@index([obraId])
@@ -478,61 +597,61 @@ model RDOClima {
   observacao  String?
   createdAt   DateTime      @default(now())
 
-  rdo         RDO           @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  rdo RDO @relation(fields: [rdoId], references: [id], onDelete: Cascade)
 
   @@index([rdoId])
 }
 
 model RDOEfetivo {
-  id                      String   @id @default(cuid())
-  rdoId                   String
-  funcao                  String
-  quantidadePresente      Int      @default(0)
-  quantidadeAusente       Int      @default(0)
-  quantidadeFaltaJustificada Int   @default(0)
-  createdAt               DateTime @default(now())
+  id                         String   @id @default(cuid())
+  rdoId                      String
+  funcao                     String
+  quantidadePresente         Int      @default(0)
+  quantidadeAusente          Int      @default(0)
+  quantidadeFaltaJustificada Int      @default(0)
+  createdAt                  DateTime @default(now())
 
-  rdo                     RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  rdo RDO @relation(fields: [rdoId], references: [id], onDelete: Cascade)
 
   @@index([rdoId])
 }
 
 model RDOAtividade {
-  id                String   @id @default(cuid())
-  rdoId             String
-  etapaId           String?
-  descricao         String
-  percentualExecutado Float  @default(0)
-  createdAt         DateTime @default(now())
+  id                  String   @id @default(cuid())
+  rdoId               String
+  etapaId             String?
+  descricao           String
+  percentualExecutado Float    @default(0)
+  createdAt           DateTime @default(now())
 
-  rdo               RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
-  etapa             Etapa?   @relation(fields: [etapaId], references: [id])
+  rdo   RDO    @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  etapa Etapa? @relation(fields: [etapaId], references: [id])
 
   @@index([rdoId])
   @@index([etapaId])
 }
 
 model RDOOcorrencia {
-  id          String          @id @default(cuid())
-  rdoId       String
-  tipo        OcorrenciaTipo
-  descricao   String
-  createdAt   DateTime        @default(now())
+  id        String         @id @default(cuid())
+  rdoId     String
+  tipo      OcorrenciaTipo
+  descricao String
+  createdAt DateTime       @default(now())
 
-  rdo         RDO             @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  rdo RDO @relation(fields: [rdoId], references: [id], onDelete: Cascade)
 
   @@index([rdoId])
 }
 
 model RDOEquipamento {
-  id              String   @id @default(cuid())
-  rdoId           String
-  equipamento     String
-  horasTrabalhadas Float   @default(0)
-  observacao      String?
-  createdAt       DateTime @default(now())
+  id               String   @id @default(cuid())
+  rdoId            String
+  equipamento      String
+  horasTrabalhadas Float    @default(0)
+  observacao       String?
+  createdAt        DateTime @default(now())
 
-  rdo             RDO      @relation(fields: [rdoId], references: [id], onDelete: Cascade)
+  rdo RDO @relation(fields: [rdoId], references: [id], onDelete: Cascade)
 
   @@index([rdoId])
 }
@@ -549,9 +668,9 @@ model Foto {
   uploadedBy String?
   createdAt  DateTime @default(now())
 
-  obra       Obra     @relation(fields: [obraId], references: [id])
-  etapa      Etapa?   @relation(fields: [etapaId], references: [id])
-  rdo        RDO?     @relation(fields: [rdoId], references: [id])
+  obra  Obra   @relation(fields: [obraId], references: [id])
+  etapa Etapa? @relation(fields: [etapaId], references: [id])
+  rdo   RDO?   @relation(fields: [rdoId], references: [id])
 
   @@index([obraId])
   @@index([etapaId])
@@ -563,7 +682,7 @@ model Orcamento {
   obraId          String
   versao          Int             @default(1)
   status          OrcamentoStatus @default(EM_ELABORACAO)
-  valorTotal      Decimal         @default(0) @db.Decimal(14,2)
+  valorTotal      Decimal         @default(0) @db.Decimal(14, 2)
   bdi             Float           @default(30)
   encargosSociais Float           @default(38.5)
   justificativa   String?
@@ -571,32 +690,32 @@ model Orcamento {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  obra            Obra            @relation(fields: [obraId], references: [id])
-  itens           OrcamentoItem[]
-  versoes         OrcamentoVersao[]
-  createdByUser   User?           @relation("OrcamentoCreatedBy", fields: [createdBy], references: [id])
+  obra          Obra              @relation(fields: [obraId], references: [id])
+  itens         OrcamentoItem[]
+  versoes       OrcamentoVersao[]
+  createdByUser User?             @relation("OrcamentoCreatedBy", fields: [createdBy], references: [id])
 
   @@index([obraId])
   @@index([status])
 }
 
 model OrcamentoItem {
-  id            String           @id @default(cuid())
+  id            String            @id @default(cuid())
   orcamentoId   String
   etapaId       String?
   codigo        String
   descricao     String
   unidade       String
-  quantidade    Decimal          @default(0) @db.Decimal(10,2)
-  precoUnitario Decimal          @default(0) @db.Decimal(14,2)
-  custoTotal    Decimal          @default(0) @db.Decimal(14,2)
+  quantidade    Decimal           @default(0) @db.Decimal(10, 2)
+  precoUnitario Decimal           @default(0) @db.Decimal(14, 2)
+  custoTotal    Decimal           @default(0) @db.Decimal(14, 2)
   tipo          OrcamentoItemTipo @default(SERVICO)
   composicao    String?
-  ordem         Int              @default(0)
-  createdAt     DateTime         @default(now())
+  ordem         Int               @default(0)
+  createdAt     DateTime          @default(now())
 
-  orcamento     Orcamento        @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
-  etapa         Etapa?           @relation(fields: [etapaId], references: [id])
+  orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+  etapa     Etapa?    @relation(fields: [etapaId], references: [id])
 
   @@index([orcamentoId])
   @@index([etapaId])
@@ -606,12 +725,12 @@ model OrcamentoVersao {
   id            String   @id @default(cuid())
   orcamentoId   String
   versao        Int
-  valorTotal    Decimal  @db.Decimal(14,2)
+  valorTotal    Decimal  @db.Decimal(14, 2)
   justificativa String?
   createdBy     String?
   createdAt     DateTime @default(now())
 
-  orcamento     Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+  orcamento Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
 
   @@index([orcamentoId])
 }
@@ -634,10 +753,10 @@ model Fornecedor {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
   estoqueMovimentos EstoqueMovimento[]
-  contratos        Contrato[]
-  notasFiscais     NotaFiscal[]
+  contratos         Contrato[]
+  notasFiscais      NotaFiscal[]
 
   @@index([tenantId])
   @@index([cnpj])
@@ -651,11 +770,11 @@ model Material {
   unidade       String
   estoqueMinimo Float    @default(0)
   categoria     String?
-  precoMedio    Decimal  @default(0) @db.Decimal(14,2)
+  precoMedio    Decimal  @default(0) @db.Decimal(14, 2)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  tenant            Tenant            @relation(fields: [tenantId], references: [id])
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
   estoqueMovimentos EstoqueMovimento[]
   requisicoes       RequisicaoCompra[]
 
@@ -663,27 +782,27 @@ model Material {
 }
 
 model EstoqueMovimento {
-  id            String       @id @default(cuid())
+  id            String        @id @default(cuid())
   obraId        String
   materialId    String
   fornecedorId  String?
   tipo          MovimentoTipo
   quantidade    Float
-  precoUnitario Decimal      @default(0) @db.Decimal(14,2)
+  precoUnitario Decimal       @default(0) @db.Decimal(14, 2)
   nfNumero      String?
   lote          String?
   localizacao   String?
   etapaId       String?
   responsavelId String?
   justificativa String?
-  data          DateTime     @default(now())
-  createdAt     DateTime     @default(now())
+  data          DateTime      @default(now())
+  createdAt     DateTime      @default(now())
 
-  obra          Obra         @relation(fields: [obraId], references: [id])
-  material      Material     @relation(fields: [materialId], references: [id])
-  fornecedor    Fornecedor?  @relation(fields: [fornecedorId], references: [id])
-  etapa         Etapa?       @relation(fields: [etapaId], references: [id])
-  responsavel   User?        @relation("EstoqueResponsavel", fields: [responsavelId], references: [id])
+  obra        Obra        @relation(fields: [obraId], references: [id])
+  material    Material    @relation(fields: [materialId], references: [id])
+  fornecedor  Fornecedor? @relation(fields: [fornecedorId], references: [id])
+  etapa       Etapa?      @relation(fields: [etapaId], references: [id])
+  responsavel User?       @relation("EstoqueResponsavel", fields: [responsavelId], references: [id])
 
   @@index([obraId])
   @@index([materialId])
@@ -691,53 +810,53 @@ model EstoqueMovimento {
 }
 
 model RequisicaoCompra {
-  id             String           @id @default(cuid())
-  obraId         String
-  materialId     String
-  solicitanteId  String
-  quantidade     Float
-  justificativa  String?
-  status         RequisicaoStatus @default(PENDENTE)
-  aprovadorId    String?
-  dataSolicitacao DateTime        @default(now())
-  dataAprovacao  DateTime?
-  observacao     String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  obraId          String
+  materialId      String
+  solicitanteId   String
+  quantidade      Float
+  justificativa   String?
+  status          RequisicaoStatus @default(PENDENTE)
+  aprovadorId     String?
+  dataSolicitacao DateTime         @default(now())
+  dataAprovacao   DateTime?
+  observacao      String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  obra           Obra             @relation(fields: [obraId], references: [id])
-  material       Material         @relation(fields: [materialId], references: [id])
-  solicitante    User             @relation("ReqSolicitante", fields: [solicitanteId], references: [id])
-  aprovador      User?            @relation("ReqAprovador", fields: [aprovadorId], references: [id])
+  obra        Obra     @relation(fields: [obraId], references: [id])
+  material    Material @relation(fields: [materialId], references: [id])
+  solicitante User     @relation("ReqSolicitante", fields: [solicitanteId], references: [id])
+  aprovador   User?    @relation("ReqAprovador", fields: [aprovadorId], references: [id])
 
   @@index([obraId])
   @@index([status])
 }
 
 model Trabalhador {
-  id              String      @id @default(cuid())
-  tenantId        String
-  nome            String
-  cpf             String
-  rg              String?
-  funcao          String
-  vinculo         VinculoTipo @default(CLT)
-  telefone        String?
-  email           String?
-  fotoUrl         String?
-  dataAdmissao    DateTime?
-  dataDemissao    DateTime?
+  id               String      @id @default(cuid())
+  tenantId         String
+  nome             String
+  cpf              String
+  rg               String?
+  funcao           String
+  vinculo          VinculoTipo @default(CLT)
+  telefone         String?
+  email            String?
+  fotoUrl          String?
+  dataAdmissao     DateTime?
+  dataDemissao     DateTime?
   subempreiteiroId String?
-  isActive        Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  isActive         Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
-  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  tenant          Tenant         @relation(fields: [tenantId], references: [id])
   presencas       Presenca[]
   epiEntregas     EPI[]
   treinamentos    Treinamento[]
   exames          ExameMedico[]
-  acidentesVitima Acidente[]  @relation("AcidenteVitima")
+  acidentesVitima Acidente[]     @relation("AcidenteVitima")
   equipeMembros   EquipeMembro[]
 
   @@index([tenantId])
@@ -745,21 +864,21 @@ model Trabalhador {
 }
 
 model EquipeObra {
-  id          String   @id @default(cuid())
-  tenantId    String
-  obraId      String
-  nome        String
-  lider       String?
+  id            String   @id @default(cuid())
+  tenantId      String
+  obraId        String
+  nome          String
+  lider         String?
   especialidade String?
-  turno       String?
-  status      String   @default("ATIVA")
-  observacoes String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  turno         String?
+  status        String   @default("ATIVA")
+  observacoes   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  obra        Obra     @relation(fields: [obraId], references: [id], onDelete: Cascade)
-  membros     EquipeMembro[]
+  tenant  Tenant         @relation(fields: [tenantId], references: [id])
+  obra    Obra           @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  membros EquipeMembro[]
 
   @@index([tenantId])
   @@index([obraId])
@@ -767,18 +886,18 @@ model EquipeObra {
 }
 
 model EquipeMembro {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   equipeId       String
   trabalhadorId  String
   funcaoNaEquipe String?
-  dataEntrada    DateTime @default(now())
+  dataEntrada    DateTime  @default(now())
   dataSaida      DateTime?
-  ativo          Boolean  @default(true)
+  ativo          Boolean   @default(true)
   observacoes    String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
-  equipe         EquipeObra @relation(fields: [equipeId], references: [id], onDelete: Cascade)
-  trabalhador    Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
+  equipe      EquipeObra  @relation(fields: [equipeId], references: [id], onDelete: Cascade)
+  trabalhador Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
 
   @@unique([equipeId, trabalhadorId])
   @@index([equipeId])
@@ -786,19 +905,19 @@ model EquipeMembro {
 }
 
 model Presenca {
-  id              String    @id @default(cuid())
-  obraId          String
-  trabalhadorId   String
-  rdoId           String?
-  data            DateTime
-  presente        Boolean   @default(false)
+  id               String   @id @default(cuid())
+  obraId           String
+  trabalhadorId    String
+  rdoId            String?
+  data             DateTime
+  presente         Boolean  @default(false)
   horasTrabalhadas Float    @default(0)
-  horasExtras     Float     @default(0)
-  createdAt       DateTime  @default(now())
+  horasExtras      Float    @default(0)
+  createdAt        DateTime @default(now())
 
-  obra            Obra      @relation(fields: [obraId], references: [id])
-  trabalhador     Trabalhador @relation(fields: [trabalhadorId], references: [id])
-  rdo             RDO?      @relation(fields: [rdoId], references: [id])
+  obra        Obra        @relation(fields: [obraId], references: [id])
+  trabalhador Trabalhador @relation(fields: [trabalhadorId], references: [id])
+  rdo         RDO?        @relation(fields: [rdoId], references: [id])
 
   @@unique([obraId, trabalhadorId, data])
   @@index([obraId])
@@ -807,48 +926,48 @@ model Presenca {
 }
 
 model EPI {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   trabalhadorId    String
   tipo             String
   descricao        String
   ca               String?
-  quantidade       Int      @default(1)
-  dataEntrega      DateTime @default(now())
+  quantidade       Int       @default(1)
+  dataEntrega      DateTime  @default(now())
   validade         DateTime?
   assinaturaBase64 String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
-  trabalhador      Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
+  trabalhador Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
 
   @@index([trabalhadorId])
 }
 
 model Treinamento {
-  id             String  @id @default(cuid())
+  id             String    @id @default(cuid())
   trabalhadorId  String
   nr             NrTipo
   descricao      String
   dataRealizacao DateTime
   validade       DateTime?
   certificadoUrl String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
-  trabalhador    Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
+  trabalhador Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
 
   @@index([trabalhadorId])
 }
 
 model ExameMedico {
-  id              String       @id @default(cuid())
-  trabalhadorId   String
-  tipo            ExameTipo
-  dataRealizacao  DateTime
-  validade        DateTime?
-  resultado       ExameResultado @default(APTO)
-  arquivoUrl      String?
-  createdAt       DateTime     @default(now())
+  id             String         @id @default(cuid())
+  trabalhadorId  String
+  tipo           ExameTipo
+  dataRealizacao DateTime
+  validade       DateTime?
+  resultado      ExameResultado @default(APTO)
+  arquivoUrl     String?
+  createdAt      DateTime       @default(now())
 
-  trabalhador     Trabalhador  @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
+  trabalhador Trabalhador @relation(fields: [trabalhadorId], references: [id], onDelete: Cascade)
 
   @@index([trabalhadorId])
 }
@@ -860,8 +979,8 @@ model Contrato {
   numero       String
   objeto       String
   tipo         ContratoTipo
-  valor        Decimal        @default(0) @db.Decimal(14,2)
-  valorAditivo Decimal        @default(0) @db.Decimal(14,2)
+  valor        Decimal        @default(0) @db.Decimal(14, 2)
+  valorAditivo Decimal        @default(0) @db.Decimal(14, 2)
   dataInicio   DateTime
   dataFim      DateTime
   status       ContratoStatus @default(EM_NEGOCIACAO)
@@ -872,10 +991,10 @@ model Contrato {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
-  obra            Obra            @relation(fields: [obraId], references: [id])
-  fornecedor      Fornecedor      @relation(fields: [fornecedorId], references: [id])
-  pagamentos      ContratoPagamento[]
-  createdByUser   User?           @relation("ContratoCreatedBy", fields: [createdBy], references: [id])
+  obra          Obra                @relation(fields: [obraId], references: [id])
+  fornecedor    Fornecedor          @relation(fields: [fornecedorId], references: [id])
+  pagamentos    ContratoPagamento[]
+  createdByUser User?               @relation("ContratoCreatedBy", fields: [createdBy], references: [id])
 
   @@index([obraId])
   @@index([fornecedorId])
@@ -883,42 +1002,42 @@ model Contrato {
 }
 
 model ContratoPagamento {
-  id                    String          @id @default(cuid())
-  contratoId            String
+  id                     String          @id @default(cuid())
+  contratoId             String
   lancamentoFinanceiroId String?
-  valor                 Decimal         @default(0) @db.Decimal(14,2)
-  dataVencimento        DateTime
-  dataPagamento         DateTime?
-  status                PagamentoStatus @default(ABERTO)
-  nfNumero              String?
-  observacao            String?
-  createdAt             DateTime        @default(now())
+  valor                  Decimal         @default(0) @db.Decimal(14, 2)
+  dataVencimento         DateTime
+  dataPagamento          DateTime?
+  status                 PagamentoStatus @default(ABERTO)
+  nfNumero               String?
+  observacao             String?
+  createdAt              DateTime        @default(now())
 
-  contrato              Contrato        @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  contrato Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
   @@index([contratoId])
   @@index([status])
 }
 
 model Documento {
-  id                    String             @id @default(cuid())
-  obraId                String
-  categoria             DocumentoCategoria
-  nome                  String
-  numero                String?
+  id                      String             @id @default(cuid())
+  obraId                  String
+  categoria               DocumentoCategoria
+  nome                    String
+  numero                  String?
   profissionalResponsavel String?
-  dataEmissao           DateTime?
-  validade              DateTime?
-  status                DocumentoStatus    @default(PENDENTE)
-  arquivoUrl            String?
-  accessHash            String?            @unique
-  descricao             String?
-  createdBy             String?
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
+  dataEmissao             DateTime?
+  validade                DateTime?
+  status                  DocumentoStatus    @default(PENDENTE)
+  arquivoUrl              String?
+  accessHash              String?            @unique
+  descricao               String?
+  createdBy               String?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
-  obra                  Obra               @relation(fields: [obraId], references: [id])
-  createdByUser         User?              @relation("DocumentoCreatedBy", fields: [createdBy], references: [id])
+  obra          Obra  @relation(fields: [obraId], references: [id])
+  createdByUser User? @relation("DocumentoCreatedBy", fields: [createdBy], references: [id])
 
   @@index([obraId])
   @@index([categoria])
@@ -926,28 +1045,28 @@ model Documento {
 }
 
 model Medicao {
-  id               String         @id @default(cuid())
-  obraId           String
-  numero           Int
-  periodoInicio    DateTime
-  periodoFim       DateTime
-  valorTotal       Decimal        @default(0) @db.Decimal(14,2)
-  status           MedicaoStatus  @default(EM_ELABORACAO)
-  createdBy        String?
-  aprovadorEngId   String?
-  aprovadorFinId   String?
+  id                 String        @id @default(cuid())
+  obraId             String
+  numero             Int
+  periodoInicio      DateTime
+  periodoFim         DateTime
+  valorTotal         Decimal       @default(0) @db.Decimal(14, 2)
+  status             MedicaoStatus @default(EM_ELABORACAO)
+  createdBy          String?
+  aprovadorEngId     String?
+  aprovadorFinId     String?
   aprovadorClienteId String?
-  dataAprovacao    DateTime?
-  observacao       String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  dataAprovacao      DateTime?
+  observacao         String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  obra             Obra           @relation(fields: [obraId], references: [id])
+  obra             Obra          @relation(fields: [obraId], references: [id])
   itens            MedicaoItem[]
-  createdByUser    User?          @relation("MedicaoCreatedBy", fields: [createdBy], references: [id])
-  aprovadorEng     User?          @relation("MedicaoAprovadorEng", fields: [aprovadorEngId], references: [id])
-  aprovadorFin     User?          @relation("MedicaoAprovadorFin", fields: [aprovadorFinId], references: [id])
-  aprovadorCliente User?          @relation("MedicaoAprovadorCliente", fields: [aprovadorClienteId], references: [id])
+  createdByUser    User?         @relation("MedicaoCreatedBy", fields: [createdBy], references: [id])
+  aprovadorEng     User?         @relation("MedicaoAprovadorEng", fields: [aprovadorEngId], references: [id])
+  aprovadorFin     User?         @relation("MedicaoAprovadorFin", fields: [aprovadorFinId], references: [id])
+  aprovadorCliente User?         @relation("MedicaoAprovadorCliente", fields: [aprovadorClienteId], references: [id])
 
   @@unique([obraId, numero])
   @@index([obraId])
@@ -955,28 +1074,28 @@ model Medicao {
 }
 
 model MedicaoItem {
-  id              String   @id @default(cuid())
-  medicaoId       String
-  etapaId         String
-  percentualMedido Float  @default(0)
-  valorMedido     Decimal  @default(0) @db.Decimal(14,2)
-  observacao      String?
-  createdAt       DateTime @default(now())
+  id               String   @id @default(cuid())
+  medicaoId        String
+  etapaId          String
+  percentualMedido Float    @default(0)
+  valorMedido      Decimal  @default(0) @db.Decimal(14, 2)
+  observacao       String?
+  createdAt        DateTime @default(now())
 
-  medicao         Medicao  @relation(fields: [medicaoId], references: [id], onDelete: Cascade)
-  etapa           Etapa    @relation(fields: [etapaId], references: [id])
+  medicao Medicao @relation(fields: [medicaoId], references: [id], onDelete: Cascade)
+  etapa   Etapa   @relation(fields: [etapaId], references: [id])
 
   @@index([medicaoId])
   @@index([etapaId])
 }
 
 model LancamentoFinanceiro {
-  id             String          @id @default(cuid())
+  id             String           @id @default(cuid())
   obraId         String
   tipo           LancamentoTipo
   categoria      String?
   descricao      String
-  valor          Decimal         @db.Decimal(14,2)
+  valor          Decimal          @db.Decimal(14, 2)
   dataVencimento DateTime
   dataPagamento  DateTime?
   status         LancamentoStatus @default(ABERTO)
@@ -985,11 +1104,11 @@ model LancamentoFinanceiro {
   medicaoId      String?
   nfNumero       String?
   createdBy      String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
-  obra           Obra            @relation(fields: [obraId], references: [id])
-  createdByUser  User?           @relation("LancamentoCreatedBy", fields: [createdBy], references: [id])
+  obra          Obra  @relation(fields: [obraId], references: [id])
+  createdByUser User? @relation("LancamentoCreatedBy", fields: [createdBy], references: [id])
 
   @@index([obraId])
   @@index([tipo])
@@ -998,66 +1117,66 @@ model LancamentoFinanceiro {
 }
 
 model NotaFiscal {
-  id                   String   @id @default(cuid())
-  obraId               String
-  fornecedorId         String
+  id                     String   @id @default(cuid())
+  obraId                 String
+  fornecedorId           String
   lancamentoFinanceiroId String?
-  numero               String
-  dataEmissao          DateTime
-  valor                Decimal  @db.Decimal(14,2)
-  cnpjEmitente         String
-  descricao            String?
-  arquivoUrl           String?
-  createdAt            DateTime @default(now())
+  numero                 String
+  dataEmissao            DateTime
+  valor                  Decimal  @db.Decimal(14, 2)
+  cnpjEmitente           String
+  descricao              String?
+  arquivoUrl             String?
+  createdAt              DateTime @default(now())
 
-  obra                 Obra     @relation(fields: [obraId], references: [id])
-  fornecedor           Fornecedor @relation(fields: [fornecedorId], references: [id])
+  obra       Obra       @relation(fields: [obraId], references: [id])
+  fornecedor Fornecedor @relation(fields: [fornecedorId], references: [id])
 
   @@index([obraId])
   @@index([fornecedorId])
 }
 
 model Ocorrencia {
-  id                     String            @id @default(cuid())
-  obraId                 String
-  etapaId                String?
-  tipo                   OcorrenciaGeralTipo
-  descricao              String
-  impactoDias            Int               @default(0)
-  responsavelAberturaId  String?
+  id                        String              @id @default(cuid())
+  obraId                    String
+  etapaId                   String?
+  tipo                      OcorrenciaGeralTipo
+  descricao                 String
+  impactoDias               Int                 @default(0)
+  responsavelAberturaId     String?
   responsavelEncerramentoId String?
-  resolucao              String?
-  status                 OcorrenciaStatus  @default(ABERTO)
-  dataAbertura           DateTime          @default(now())
-  dataEncerramento       DateTime?
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  resolucao                 String?
+  status                    OcorrenciaStatus    @default(ABERTO)
+  dataAbertura              DateTime            @default(now())
+  dataEncerramento          DateTime?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
 
-  obra                   Obra              @relation(fields: [obraId], references: [id])
-  etapa                  Etapa?            @relation(fields: [etapaId], references: [id])
-  responsavelAbertura    User?             @relation("OcorrenciaAbertura", fields: [responsavelAberturaId], references: [id])
-  responsavelEncerramento User?            @relation("OcorrenciaEncerramento", fields: [responsavelEncerramentoId], references: [id])
+  obra                    Obra   @relation(fields: [obraId], references: [id])
+  etapa                   Etapa? @relation(fields: [etapaId], references: [id])
+  responsavelAbertura     User?  @relation("OcorrenciaAbertura", fields: [responsavelAberturaId], references: [id])
+  responsavelEncerramento User?  @relation("OcorrenciaEncerramento", fields: [responsavelEncerramentoId], references: [id])
 
   @@index([obraId])
   @@index([status])
 }
 
 model Inspecao {
-  id            String           @id @default(cuid())
+  id            String            @id @default(cuid())
   obraId        String
   etapaId       String
   tipo          InspecaoTipo
   responsavelId String
-  data          DateTime         @default(now())
+  data          DateTime          @default(now())
   resultado     InspecaoResultado
   observacao    String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
-  obra          Obra             @relation(fields: [obraId], references: [id])
-  etapa         Etapa            @relation(fields: [etapaId], references: [id])
-  responsavel   User             @relation("InspecaoResponsavel", fields: [responsavelId], references: [id])
-  itens         InspecaoItem[]
+  obra             Obra              @relation(fields: [obraId], references: [id])
+  etapa            Etapa             @relation(fields: [etapaId], references: [id])
+  responsavel      User              @relation("InspecaoResponsavel", fields: [responsavelId], references: [id])
+  itens            InspecaoItem[]
   naoConformidades NaoConformidade[]
 
   @@index([obraId])
@@ -1065,41 +1184,41 @@ model Inspecao {
 }
 
 model InspecaoItem {
-  id          String        @id @default(cuid())
-  inspecaoId  String
-  descricao   String
-  resultado   ItemResultado
-  observacao  String?
-  fotoUrl     String?
-  createdAt   DateTime      @default(now())
+  id         String        @id @default(cuid())
+  inspecaoId String
+  descricao  String
+  resultado  ItemResultado
+  observacao String?
+  fotoUrl    String?
+  createdAt  DateTime      @default(now())
 
-  inspecao    Inspecao      @relation(fields: [inspecaoId], references: [id], onDelete: Cascade)
+  inspecao Inspecao @relation(fields: [inspecaoId], references: [id], onDelete: Cascade)
 
   @@index([inspecaoId])
 }
 
 model NaoConformidade {
-  id              String     @id @default(cuid())
-  inspecaoId      String?
-  obraId          String
-  etapaId         String?
-  descricao       String
-  causaRaiz       String?
-  severidade      Severidade @default(MEDIO)
-  responsavelId   String?
-  prazo           DateTime?
-  acaoCorretiva   String?
-  status          NCStatus   @default(ABERTA)
-  fotoAntesUrl    String?
-  fotoDepoisUrl   String?
+  id               String     @id @default(cuid())
+  inspecaoId       String?
+  obraId           String
+  etapaId          String?
+  descricao        String
+  causaRaiz        String?
+  severidade       Severidade @default(MEDIO)
+  responsavelId    String?
+  prazo            DateTime?
+  acaoCorretiva    String?
+  status           NCStatus   @default(ABERTA)
+  fotoAntesUrl     String?
+  fotoDepoisUrl    String?
   dataEncerramento DateTime?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
-  inspecao        Inspecao?  @relation(fields: [inspecaoId], references: [id])
-  obra            Obra       @relation(fields: [obraId], references: [id])
-  etapa           Etapa?     @relation(fields: [etapaId], references: [id])
-  responsavel     User?      @relation("NCResponsavel", fields: [responsavelId], references: [id])
+  inspecao    Inspecao? @relation(fields: [inspecaoId], references: [id])
+  obra        Obra      @relation(fields: [obraId], references: [id])
+  etapa       Etapa?    @relation(fields: [etapaId], references: [id])
+  responsavel User?     @relation("NCResponsavel", fields: [responsavelId], references: [id])
 
   @@index([obraId])
   @@index([status])
@@ -1116,14 +1235,14 @@ model DDS {
   assinaturas   Json?
   createdAt     DateTime @default(now())
 
-  obra          Obra     @relation(fields: [obraId], references: [id])
-  responsavel   User     @relation("DdsResponsavel", fields: [responsavelId], references: [id])
+  obra        Obra @relation(fields: [obraId], references: [id])
+  responsavel User @relation("DdsResponsavel", fields: [responsavelId], references: [id])
 
   @@index([obraId])
 }
 
 model Acidente {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   obraId         String
   tipo           AcidenteTipo
   dataHora       DateTime
@@ -1133,12 +1252,12 @@ model Acidente {
   testemunhas    String?
   causaRaiz      String?
   acaoPreventiva String?
-  catAberto      Boolean       @default(false)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  catAberto      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
-  obra           Obra          @relation(fields: [obraId], references: [id])
-  vitima         Trabalhador?  @relation("AcidenteVitima", fields: [vitimaId], references: [id])
+  obra   Obra         @relation(fields: [obraId], references: [id])
+  vitima Trabalhador? @relation("AcidenteVitima", fields: [vitimaId], references: [id])
 
   @@index([obraId])
   @@index([tipo])
@@ -1160,8 +1279,8 @@ model PecaPreMoldada {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  obra            Obra       @relation(fields: [obraId], references: [id])
-  etapa           Etapa?     @relation(fields: [etapaId], references: [id])
+  obra  Obra   @relation(fields: [obraId], references: [id])
+  etapa Etapa? @relation(fields: [etapaId], references: [id])
 
   @@index([obraId])
   @@index([etapaId])
@@ -1170,19 +1289,19 @@ model PecaPreMoldada {
 }
 
 model Notificacao {
-  id        String            @id @default(cuid())
+  id        String           @id @default(cuid())
   tenantId  String
   userId    String
   tipo      String
   titulo    String
   mensagem  String
-  lida      Boolean           @default(false)
+  lida      Boolean          @default(false)
   canal     NotificacaoCanal
   dataEnvio DateTime?
-  createdAt DateTime          @default(now())
+  createdAt DateTime         @default(now())
 
-  tenant    Tenant            @relation(fields: [tenantId], references: [id])
-  user      User              @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([lida])
@@ -1190,16 +1309,16 @@ model Notificacao {
 }
 
 model CronogramaVersao {
-  id           String   @id @default(cuid())
-  obraId       String
-  versao       Int
+  id            String    @id @default(cuid())
+  obraId        String
+  versao        Int
   dataAprovacao DateTime?
-  aprovadoPor  String?
+  aprovadoPor   String?
   justificativa String?
-  baseline     Json?
-  createdAt    DateTime @default(now())
+  baseline      Json?
+  createdAt     DateTime  @default(now())
 
-  obra         Obra     @relation(fields: [obraId], references: [id])
+  obra Obra @relation(fields: [obraId], references: [id])
 
   @@index([obraId])
 }

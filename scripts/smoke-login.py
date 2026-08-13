@@ -7,8 +7,8 @@ import http.cookiejar
 
 base = 'http://localhost:3000'
 
-ADMIN_EMAIL = 'admin@awcpremoldados.com.br'
-ADMIN_PASS = 'awc@2026'
+ADMIN_EMAIL = 'admin@demo.rigor.local'
+ADMIN_PASS = 'admin123'
 
 fails = 0
 def check(name, ok, extra=''):
@@ -63,7 +63,7 @@ check('admin novo: /api/usuarios responde', isinstance(usuarios, list), f"({len(
 
 # 6. Página de login limpa: sem credenciais demo e sem botão Google
 raw = new_session().open(base + '/login').read().decode(errors='replace')
-check('login: sem senha demo pré-preenchida', 'admin123' not in raw and 'admin@awc.com.br' not in raw)
+check('login: sem senha demo pré-preenchida', 'admin123' not in raw and 'admin@demo.rigor.local' not in raw)
 check('login: sem botão Google (OAuth não configurado)', 'Entrar com Google' not in raw)
 check('login: aviso de acesso restrito', 'Acesso restrito' in raw)
 

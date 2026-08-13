@@ -1,0 +1,37 @@
+# Local metadata and secrets
+.git
+.vercel
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+# Dependencies and generated output (Vercel reinstalls/rebuilds them)
+node_modules
+**/node_modules/**
+.turbo
+**/.turbo/**
+.next
+**/.next/**
+dist
+**/dist/**
+build
+**/build/**
+coverage
+**/coverage/**
+
+# Local tools, caches and logs
+.codex-tmp
+.npm-cache
+.npm-cache-swc
+.npm-cache-clean
+.claude
+*.log
+**/*.log
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# The Vercel project publishes only the web workspace
+apps/mobile
