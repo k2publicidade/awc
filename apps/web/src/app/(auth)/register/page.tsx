@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Building2, Check, HardHat, Loader2, ShieldCheck } from 'lucide-react';
+import { Building2, Check, Loader2, ShieldCheck, ArrowRight } from 'lucide-react';
 import { SAAS_PLANS, type SaasPlan } from '@/lib/saas';
+import { RigorLogo } from '@/components/ui/rigor-logo';
 
 export default function RegisterPage() {
   const publicSignupEnabled =
@@ -17,26 +18,26 @@ export default function RegisterPage() {
 
   if (!publicSignupEnabled) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#071018] p-6 text-slate-100">
-        <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/[.045] p-8 shadow-2xl sm:p-10">
-          <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#ff5a00] text-white">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <p className="mt-7 text-[11px] font-black uppercase tracking-[.22em] text-[#ff6a1a]">
-            Onboarding assistido
+      <main className="grid min-h-screen place-items-center bg-[#0B1F33] p-6 text-[#F5F7F6]">
+        <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#071524]/90 p-8 shadow-2xl sm:p-10 text-center">
+          <div className="mx-auto mb-6 flex justify-center">
+            <RigorLogo markSize={40} theme="dark" showTagline={true} taglineText="BUILT ON PRECISION" />
+          </div>
+          <p className="mt-4 text-[11px] font-black uppercase tracking-[.22em] text-[#1687FF]">
+            Onboarding Assistido
           </p>
-          <h1 className="mt-3 text-4xl font-black tracking-[-.04em] text-white">
-            Novas empresas entram por convite.
+          <h1 className="mt-3 text-3xl font-black tracking-[-.03em] text-white">
+            Novas empresas entram por convite ou validação técnica.
           </h1>
-          <p className="mt-5 text-sm leading-7 text-slate-400">
-            Estamos acompanhando cada implantação do RIGOR de perto. Solicite seu acesso à equipe
-            comercial ou entre com uma conta já provisionada.
+          <p className="mt-4 text-sm leading-7 text-[#AAB4BD]">
+            Acompanhamos cada implantação do RIGOR de perto. Solicite seu acesso à nossa equipe
+            ou acesse com uma conta já provisionada.
           </p>
           <Link
             href="/login"
-            className="mt-8 flex h-12 items-center justify-center rounded-xl bg-[#ff5a00] text-sm font-black text-white transition hover:bg-[#e85109]"
+            className="rigor-btn-primary mt-8 flex h-12 items-center justify-center rounded-xl text-xs font-black uppercase tracking-wider text-white"
           >
-            Voltar para o login
+            Ir para o Login
           </Link>
         </div>
       </main>
@@ -74,28 +75,26 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#071018] text-slate-100">
-      <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] [background-size:36px_36px]" />
+    <main className="min-h-screen bg-[#0B1F33] text-[#F5F7F6]">
+      <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(170,180,189,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(170,180,189,.08)_1px,transparent_1px)] [background-size:36px_36px]" />
       <div className="relative mx-auto grid min-h-screen max-w-[1480px] lg:grid-cols-[.82fr_1.18fr]">
         <section className="flex flex-col justify-between border-b border-white/10 p-7 lg:border-b-0 lg:border-r lg:p-12 xl:p-16">
-          <Link href="/login" className="flex items-center gap-3 text-xl font-black tracking-tight">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#ff5a00] text-white">
-              <HardHat className="h-5 w-5" />
-            </span>
-            <span className="tracking-[.08em]"><span className="text-[#ff6a1a]">R</span>IGOR</span>
+          <Link href="/login" className="inline-flex items-center">
+            <RigorLogo markSize={36} theme="dark" showTagline={true} taglineText="BUILT ON PRECISION" />
           </Link>
+
           <div className="my-12 max-w-lg lg:my-0">
-            <p className="mb-5 text-[11px] font-black uppercase tracking-[.28em] text-[#ff6a1a]">
+            <p className="mb-4 text-[11px] font-black uppercase tracking-[.24em] text-[#1687FF]">
               Gestão que sai do escritório e chega ao canteiro
             </p>
-            <h1 className="text-4xl font-black leading-[1.04] tracking-[-.045em] text-white sm:text-5xl xl:text-6xl">
+            <h1 className="text-4xl font-black leading-[1.04] tracking-[-.035em] text-white sm:text-5xl">
               Toda obra sob controle. Todos na mesma página.
             </h1>
-            <p className="mt-6 max-w-md text-sm leading-7 text-slate-400">
+            <p className="mt-6 max-w-md text-sm leading-7 text-[#AAB4BD]">
               Planejamento, diário de obra, custos, suprimentos, qualidade e segurança conectados em
-              uma única operação.
+              uma única operação técnica.
             </p>
-            <div className="mt-9 grid gap-3 text-sm text-slate-300 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <div className="mt-8 grid gap-3 text-sm text-slate-300 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               {[
                 '14 dias grátis',
                 'Sem cartão de crédito',
@@ -103,34 +102,37 @@ export default function RegisterPage() {
                 'Dados isolados por empresa',
               ].map((item) => (
                 <div key={item} className="flex items-center gap-2.5">
-                  <Check className="h-4 w-4 text-[#ff6a1a]" />
-                  {item}
+                  <Check className="h-4 w-4 text-[#1687FF]" />
+                  <span>{item}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <ShieldCheck className="h-4 w-4" />
-            Ambiente protegido e acesso por função
+
+          <div className="flex items-center gap-2 text-xs text-[#AAB4BD]">
+            <ShieldCheck className="h-4 w-4 text-[#1687FF]" />
+            Ambiente protegido e isolado · LGPD Compliance
           </div>
         </section>
 
-        <section className="flex items-center justify-center bg-[#f4f6f8] p-5 text-slate-900 sm:p-10 xl:p-14">
+        <section className="flex items-center justify-center bg-[#F5F7F6] p-5 text-[#0B1F33] sm:p-10 xl:p-14">
           <div className="w-full max-w-3xl">
             <div className="mb-7 flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[.18em] text-[#f05a13]">
+                <p className="text-xs font-black uppercase tracking-[.18em] text-[#1687FF]">
                   Comece agora
                 </p>
-                <h2 className="mt-2 text-3xl font-black tracking-[-.035em]">Crie seu workspace</h2>
+                <h2 className="mt-2 text-3xl font-black tracking-[-.03em] text-[#0B1F33]">
+                  Crie seu workspace
+                </h2>
               </div>
-              <Link href="/login" className="text-sm font-bold text-slate-500 hover:text-[#f05a13]">
+              <Link href="/login" className="text-sm font-bold text-[#354654] hover:text-[#1687FF] transition-colors">
                 Já tenho conta
               </Link>
             </div>
             <form
               onSubmit={submit}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,.08)] sm:p-8"
+              className="rounded-2xl border border-[#AAB4BD]/30 bg-white p-6 shadow-[0_24px_80px_rgba(11,31,51,.06)] sm:p-8"
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
@@ -161,8 +163,8 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="mt-6">
-                <p className="mb-3 text-[11px] font-black uppercase tracking-wider text-slate-500">
-                  Plano após o período de teste
+                <p className="mb-3 text-[11px] font-black uppercase tracking-wider text-[#354654]">
+                  Plano após o período de teste de 14 dias
                 </p>
                 <div className="grid gap-3 sm:grid-cols-3">
                   {(Object.keys(SAAS_PLANS) as SaasPlan[]).map((key) => {
@@ -173,19 +175,23 @@ export default function RegisterPage() {
                         type="button"
                         key={key}
                         onClick={() => setPlan(key)}
-                        className={`relative rounded-xl border p-4 text-left transition-all ${selected ? 'border-[#ff5a00] bg-orange-50/60 ring-2 ring-[#ff5a00]/10' : 'border-slate-200 hover:border-slate-300'}`}
+                        className={`relative rounded-xl border p-4 text-left transition-all ${
+                          selected
+                            ? 'border-[#1687FF] bg-[#1687FF]/5 ring-2 ring-[#1687FF]/20 shadow-xs'
+                            : 'border-[#AAB4BD]/40 hover:border-[#AAB4BD]'
+                        }`}
                       >
                         {key === 'PRO' && (
-                          <span className="absolute -top-2.5 right-3 rounded-full bg-[#ff5a00] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white">
+                          <span className="absolute -top-2.5 right-3 rounded-full bg-[#1687FF] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white">
                             Recomendado
                           </span>
                         )}
-                        <p className="text-sm font-black">{item.name}</p>
-                        <p className="mt-1 text-lg font-black">
+                        <p className="text-sm font-black text-[#0B1F33]">{item.name}</p>
+                        <p className="mt-1 text-lg font-black text-[#0B1F33]">
                           R$ {item.price}
-                          <span className="text-[10px] font-semibold text-slate-400">/mês</span>
+                          <span className="text-[10px] font-semibold text-[#AAB4BD]">/mês</span>
                         </p>
-                        <p className="mt-2 text-[10px] leading-4 text-slate-500">
+                        <p className="mt-2 text-[10px] leading-4 text-[#354654]">
                           {Number.isFinite(item.limits.obras)
                             ? `${item.limits.obras} obras · ${item.limits.users} usuários`
                             : 'Obras e usuários ilimitados'}
@@ -200,19 +206,35 @@ export default function RegisterPage() {
                   {error}
                 </div>
               )}
-              <label className="mt-5 flex items-start gap-3 text-xs leading-5 text-slate-600">
-                <input required name="acceptTerms" value="true" type="checkbox" className="mt-1 h-4 w-4 accent-[#f05a13]" />
-                <span>Li e aceito os <Link className="font-bold text-[#d94c09]" href="/termos" target="_blank">Termos de Uso</Link> e a <Link className="font-bold text-[#d94c09]" href="/privacidade" target="_blank">Política de Privacidade</Link>.</span>
+              <label className="mt-5 flex items-start gap-3 text-xs leading-5 text-[#354654]">
+                <input
+                  required
+                  name="acceptTerms"
+                  value="true"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 accent-[#1687FF]"
+                />
+                <span>
+                  Li e aceito os{' '}
+                  <Link className="font-bold text-[#1687FF] hover:underline" href="/termos" target="_blank">
+                    Termos de Uso
+                  </Link>{' '}
+                  e a{' '}
+                  <Link className="font-bold text-[#1687FF] hover:underline" href="/privacidade" target="_blank">
+                    Política de Privacidade
+                  </Link>
+                  .
+                </span>
               </label>
               <button
                 disabled={loading}
-                className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[#f05a13] text-sm font-black text-white shadow-lg shadow-orange-600/20 transition hover:bg-[#d94c09] disabled:opacity-60"
+                className="rigor-btn-primary mt-6 flex h-12 w-full items-center justify-center rounded-xl text-xs font-black uppercase tracking-wider text-white disabled:opacity-60"
               >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Criar workspace e
-                iniciar teste
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Criar Workspace e Iniciar Teste <ArrowRight className="ml-2 h-4 w-4" />
               </button>
-              <p className="mt-4 text-center text-[10px] leading-4 text-slate-400">
-                Seu aceite é registrado com a versão vigente dos documentos.
+              <p className="mt-4 text-center text-[10px] leading-4 text-[#AAB4BD]">
+                Seu aceite é registrado com a versão vigente dos documentos em auditoria segura.
               </p>
             </form>
           </div>
@@ -236,11 +258,11 @@ function Field({
   icon?: React.ReactNode;
 }) {
   return (
-    <label className="text-xs font-bold text-slate-700">
+    <label className="text-xs font-bold text-[#0B1F33]">
       {label}
       <div className="relative mt-2">
         {icon && (
-          <span className="absolute left-3 top-1/2 [&>svg]:h-4 [&>svg]:w-4 -translate-y-1/2 text-slate-400">
+          <span className="absolute left-3 top-1/2 [&>svg]:h-4 [&>svg]:w-4 -translate-y-1/2 text-[#354654]">
             {icon}
           </span>
         )}
@@ -250,7 +272,9 @@ function Field({
           type={type}
           placeholder={placeholder}
           minLength={type === 'password' ? 8 : undefined}
-          className={`h-11 w-full rounded-lg border border-slate-200 bg-slate-50/60 px-3 text-sm outline-none transition focus:border-[#ff5a00] focus:bg-white focus:ring-4 focus:ring-orange-100 ${icon ? 'pl-10' : ''}`}
+          className={`h-11 w-full rounded-lg border border-[#AAB4BD]/40 bg-[#F5F7F6]/60 px-3 text-sm text-[#0B1F33] outline-none transition focus:border-[#1687FF] focus:bg-white focus:ring-4 focus:ring-[#1687FF]/10 ${
+            icon ? 'pl-10' : ''
+          }`}
         />
       </div>
     </label>
