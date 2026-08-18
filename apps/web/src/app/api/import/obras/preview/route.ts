@@ -5,8 +5,8 @@ import { parseObraFile } from '@/lib/import/obra-import';
 
 export const runtime = 'nodejs';
 
-const MAX_FILE_SIZE = 4 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = ['.xlsx', '.csv', '.docx'];
+const MAX_FILE_SIZE = 30 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = ['.xlsx', '.xls', '.csv', '.docx', '.mpp', '.xml', '.pdf'];
 
 export async function POST(request: NextRequest) {
   const context = await requireSession();
@@ -21,12 +21,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Selecione um arquivo para importar' }, { status: 400 });
     if (!file.size) return NextResponse.json({ error: 'O arquivo está vazio' }, { status: 400 });
     if (file.size > MAX_FILE_SIZE)
-      return NextResponse.json({ error: 'O arquivo deve ter no máximo 4 MB' }, { status: 413 });
+      return NextResponse.json({ error: 'O arquivo deve ter no máximo 30 MB' }, { status: 413 });
 
     const extension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0] || '';
     if (!ALLOWED_EXTENSIONS.includes(extension))
       return NextResponse.json(
-        { error: 'Formato não suportado. Envie .xlsx, .csv ou .docx.' },
+        { error: 'Formato não suportado. Envie .mpp, .xml, .pdf, .xlsx, .csv ou .docx.' },
         { status: 415 }
       );
 
