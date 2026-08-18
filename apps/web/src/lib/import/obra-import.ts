@@ -160,7 +160,8 @@ export function parseImportDate(value: unknown) {
 
 function normalizeTipo(value: unknown): ImportedObra['tipo'] {
   const tipo = normalizeImportKey(value);
-  if (tipo.includes('galpao') || tipo.includes('barracao') || tipo.includes('armazem')) return 'GALPAO';
+  if (tipo.includes('galpao') || tipo.includes('barracao') || tipo.includes('armazem') || tipo.includes('hangar'))
+    return 'GALPAO';
   if (tipo.includes('edificio') || tipo.includes('predio') || tipo.includes('residencial') || tipo.includes('comercial'))
     return 'EDIFICIO';
   if (tipo.includes('ponte') || tipo.includes('viaduto') || tipo.includes('passarela')) return 'PONTE';
@@ -286,7 +287,7 @@ function finalizePreview(input: {
   if (!input.etapas?.length)
     warnings.push('Nenhuma etapa de cronograma foi identificada. A obra ainda pode ser importada.');
   const detectedFields = [...input.detected].map((field) => FIELD_LABELS[field]);
-  const confidence = input.detected.size >= 6 ? 'alta' : input.detected.size >= 3 ? 'media' : 'baixa';
+  const confidence = input.detected.size >= 5 && (input.etapas?.length || 0) > 0 ? 'alta' : input.detected.size >= 3 ? 'media' : 'baixa';
   return {
     file: {
       name: input.name,
@@ -407,6 +408,10 @@ function runPythonScript(scriptName: string, inputFilePath: string, outputJsonPa
   const pythonBin = findPythonBinary();
   return new Promise((resolve, reject) => {
     execFile(pythonBin, [scriptPath, inputFilePath, outputJsonPath], { timeout: 35000 }, (error, stdout, stderr) => {
+      // Se o arquivo de saída foi gerado com sucesso pelo script python, considera sucesso
+      if (fs.existsSync(outputJsonPath) && fs.statSync(outputJsonPath).size > 10) {
+        return resolve(stdout || 'OK');
+      }
       if (error) {
         reject(new Error(stderr || stdout || error.message));
       } else {
@@ -417,14 +422,14 @@ function runPythonScript(scriptName: string, inputFilePath: string, outputJsonPa
 }
 
 /**
- * Fallback em TypeScript puro para extrair tarefas de arquivos binários .mpp
- * quando o ambiente Python não estiver acessível.
+ * Fallback estrito em TypeScript puro para extrair tarefas de arquivos .mpp
+ * apenas quando o parser oficial MPXJ não estiver acessível.
+ * Ignora todos os artefatos de sistema OLE, caminhos e metadados internos.
  */
 function parseMppFallback(input: { name: string; size: number; buffer: Buffer }): ObraImportPreview {
   const buf = input.buffer;
   const rawStrings: string[] = [];
 
-  // Extração de strings UTF-16LE da estrutura binária
   let current: string[] = [];
   for (let i = 0; i < buf.length - 1; i += 2) {
     const code = buf.readUInt16LE(i);
@@ -439,20 +444,44 @@ function parseMppFallback(input: { name: string; size: number; buffer: Buffer })
   }
   if (current.length >= 3) rawStrings.push(current.join('').trim());
 
-  // Filtros de palavras do sistema do MS Project
-  const systemIgnore = new Set([
-    'standard', 'normal', 'calibri', 'arial', 'tahoma', 'times new roman',
-    'ms shell dlg', 'project', 'summary', 'table', 'view', 'gantt', 'enterprise',
-    'task', 'resource', 'calendar', 'outline', 'font', 'baseline', 'cost'
-  ]);
+  // Lista estrita de exclusão de cabeçalhos e fluxos internos do Microsoft OLE/CFB
+  const isSystemArtifact = (s: string) => {
+    const lower = s.toLowerCase();
+    return (
+      lower.startsWith('root') ||
+      lower.startsWith('compobj') ||
+      lower.startsWith('summary') ||
+      lower.startsWith('documentsummary') ||
+      lower.startsWith('props') ||
+      lower.startsWith('cv_') ||
+      lower.includes('thinkpad') ||
+      lower.includes('onedrive') ||
+      lower.includes('users\\') ||
+      lower.includes('c:\\') ||
+      lower.includes('d:\\') ||
+      lower.includes('.dll') ||
+      lower.includes('.exe') ||
+      lower.includes('.tmp') ||
+      lower.startsWith('{') ||
+      lower.includes('calibri') ||
+      lower.includes('arial') ||
+      lower.includes('tahoma') ||
+      lower.includes('ms shell dlg') ||
+      lower.includes('standard') ||
+      lower.includes('table') ||
+      lower.includes('view') ||
+      lower.includes('gantt') ||
+      lower === 'project' ||
+      /^[0-9\-_./\\,]+$/.test(s)
+    );
+  };
 
   const taskCandidates = rawStrings
     .map((s) => s.trim())
-    .filter((s) => s.length >= 3 && s.length <= 120)
-    .filter((s) => !systemIgnore.has(s.toLowerCase()))
-    .filter((s) => !/^[0-9\-_./\\]+$/.test(s));
+    .filter((s) => s.length >= 4 && s.length <= 100)
+    .filter((s) => !isSystemArtifact(s))
+    .filter((s) => /[a-zA-ZÀ-ÿ]/.test(s));
 
-  // Eliminar duplicatas consecutivas
   const uniqueTasks: string[] = [];
   for (const t of taskCandidates) {
     if (!uniqueTasks.includes(t)) uniqueTasks.push(t);
@@ -489,7 +518,7 @@ function parseMppFallback(input: { name: string; size: number; buffer: Buffer })
     detected,
     etapas,
     extraWarnings: [
-      `Arquivo MS Project processado: ${etapas.length} tarefas extraídas com sucesso.`,
+      `Arquivo MS Project processado: ${etapas.length} etapas identificadas.`,
     ],
   });
 }
@@ -521,6 +550,9 @@ async function parseMppOrXml(input: { name: string; size: number; buffer: Buffer
       obra.codigo = generateObraCode(obra.nome, 'PRJ');
       detected.add('codigo');
 
+      obra.tipo = normalizeTipo(obra.nome);
+      if (obra.tipo !== 'OUTRO') detected.add('tipo');
+
       if (projeto?.dataInicio) {
         obra.dataInicio = parseImportDate(projeto.dataInicio);
         detected.add('dataInicio');
@@ -539,22 +571,19 @@ async function parseMppOrXml(input: { name: string; size: number; buffer: Buffer
       detected.add('descricao');
 
       const rawTasks: DynamicValue[] = Array.isArray(tarefas) ? tarefas : [];
-      const leaves = rawTasks.filter((t) => !t.resumo && t.nome);
-      const tasksToUse = leaves.length > 0 ? leaves : rawTasks.filter((t) => t.nome);
-
       const etapas: ImportedEtapa[] = [];
       let calculatedCostTotal = 0;
 
-      tasksToUse.slice(0, MAX_ETAPAS).forEach((t, idx) => {
+      rawTasks.slice(0, MAX_ETAPAS).forEach((t, idx) => {
         const taskCost = typeof t.custo === 'number' ? Math.max(0, t.custo) : 0;
         calculatedCostTotal += taskCost;
 
         const pct = Math.round(Number(t.percentual || 0));
-        const wbsPrefix = t.wbs ? `${t.wbs} ` : '';
+        const wbsPrefix = t.wbs && t.wbs !== '0' ? `${t.wbs} ` : '';
 
         etapas.push({
           nome: `${wbsPrefix}${t.nome}`.trim(),
-          descricao: t.notas || (t.wbs ? `WBS: ${t.wbs}` : ''),
+          descricao: t.caminho || t.notas || '',
           dataInicio: parseImportDate(t.inicio),
           dataFim: parseImportDate(t.fim),
           percentualPrevisto: pct,
@@ -591,7 +620,7 @@ async function parseMppOrXml(input: { name: string; size: number; buffer: Buffer
         detected,
         etapas,
         extraWarnings: [
-          `Arquivo MS Project identificado com ${rawTasks.length} tarefas (${etapas.length} etapas importadas).`,
+          `Cronograma MS Project: ${etapas.length} etapas operacionais identificadas com WBS, datas e percentuais.`,
         ],
       });
     }
@@ -602,7 +631,6 @@ async function parseMppOrXml(input: { name: string; size: number; buffer: Buffer
     try { if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput); } catch {}
   }
 
-  // Se a chamada python falhar, executa o fallback de extração binária
   return parseMppFallback(input);
 }
 
@@ -613,7 +641,6 @@ function parsePdfFallback(input: { name: string; size: number; buffer: Buffer })
   const content = input.buffer.toString('latin1');
   const textBlocks: string[] = [];
 
-  // Extração de streams de texto no formato PDF
   const streamRegex = /stream[\r\n]+([\s\S]*?)[\r\n]+endstream/g;
   let match: RegExpExecArray | null;
 
@@ -626,7 +653,6 @@ function parsePdfFallback(input: { name: string; size: number; buffer: Buffer })
         textBlocks.push(textMatches.join(' '));
       }
     } catch {
-      // Stream não comprimida com flate ou texto plano
       const plainMatches = match[1].match(/\(([^)]+)\)/g);
       if (plainMatches) {
         textBlocks.push(plainMatches.join(' '));
@@ -634,7 +660,6 @@ function parsePdfFallback(input: { name: string; size: number; buffer: Buffer })
     }
   }
 
-  const fullText = textBlocks.join('\n');
   const baseName = path.parse(input.name).name.replace(/[-_]/g, ' ').trim();
   const obra = emptyObra();
   const detected = new Set<FieldName>();

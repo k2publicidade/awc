@@ -53,11 +53,15 @@ def main():
         "custoTotal": float(props.getCost().doubleValue()) if props and props.getCost() else 0.0,
     }
 
-    tasks = []
+    all_tasks = []
     for t in project.getTasks():
         if t.getName() is None:
             continue
         
+        name = str(t.getName()).strip()
+        if not name:
+            continue
+
         cost_val = 0.0
         try:
             if t.getCost():
@@ -65,27 +69,59 @@ def main():
         except Exception:
             pass
 
-        tasks.append({
+        wbs_val = s(t.getWBS())
+        level = t.getOutlineLevel().intValue() if t.getOutlineLevel() else 0
+        is_summary = bool(t.getSummary())
+
+        all_tasks.append({
             "id": t.getID().intValue() if t.getID() else None,
             "uid": t.getUniqueID().intValue() if t.getUniqueID() else None,
-            "nivel": t.getOutlineLevel().intValue() if t.getOutlineLevel() else 0,
-            "wbs": s(t.getWBS()),
-            "nome": s(t.getName()),
+            "nivel": level,
+            "wbs": wbs_val,
+            "nome": name,
             "inicio": s(t.getStart()),
             "fim": s(t.getFinish()),
             "duracao": s(t.getDuration()),
             "custo": cost_val,
             "percentual": float(t.getPercentageComplete().doubleValue()) if t.getPercentageComplete() else 0.0,
-            "resumo": bool(t.getSummary()),
+            "resumo": is_summary,
             "marco": bool(t.getMilestone()),
-            "predecessoras": [p.getPredecessorTask().getID().intValue() for p in (t.getPredecessors() or []) if p.getPredecessorTask()],
+            "predecessoras": [p.getPredecessorTask().getID().intValue() for p in (t.getPredecessors() or []) if p.getPredecessorTask() and p.getPredecessorTask().getID()],
             "notas": s(t.getNotes()) or None,
         })
 
-    with open(out, "w", encoding="utf-8") as f:
-        json.dump({"projeto": info, "tarefas": tasks}, f, ensure_ascii=False, indent=1)
+    # Se o título do projeto não foi definido nas propriedades, tenta usar a tarefa raiz (nível 0)
+    root_task = next((t for t in all_tasks if t["nivel"] == 0 or t["wbs"] == "0"), None)
+    if not info["titulo"] and root_task:
+        info["titulo"] = root_task["nome"]
 
-    print(f"OK {len(tasks)} tarefas extraidas")
+    # Mapa de nomes de grupos pelo prefixo WBS para montar caminho da hierarquia
+    summary_map = {t["wbs"]: t["nome"] for t in all_tasks if t["resumo"] and t["wbs"]}
+
+    def get_parent_path(task):
+        if not task["wbs"]:
+            return None
+        parts = task["wbs"].split(".")
+        parents = []
+        for i in range(1, len(parts)):
+            prefix = ".".join(parts[:i])
+            if prefix in summary_map:
+                parents.append(summary_map[prefix])
+        return " › ".join(parents) if parents else None
+
+    # Filtrar apenas tarefas operacionais (folhas) que representam as etapas reais da obra
+    leaf_tasks = [t for t in all_tasks if not t["resumo"] and t["nivel"] > 0]
+    
+    # Se não houver tarefas folha (caso raro de projeto plano), usa todas com nível > 0
+    selected_tasks = leaf_tasks if len(leaf_tasks) > 0 else [t for t in all_tasks if t["nivel"] > 0 or t != root_task]
+
+    for t in selected_tasks:
+        t["caminho"] = get_parent_path(t)
+
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump({"projeto": info, "tarefas": selected_tasks}, f, ensure_ascii=False, indent=1)
+
+    print(f"OK {len(selected_tasks)} etapas de obra extraidas com sucesso")
 
 if __name__ == '__main__':
     main()
