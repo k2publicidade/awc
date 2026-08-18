@@ -597,7 +597,6 @@ function parsePdfFallback(input: { name: string; size: number; buffer: Buffer })
     }
   }
 
-  const fullText = textBlocks.join('\n');
   const baseName = path.parse(input.name).name.replace(/[-_]/g, ' ').trim();
   const obra = emptyObra();
   const detected = new Set<FieldName>();
@@ -608,7 +607,9 @@ function parsePdfFallback(input: { name: string; size: number; buffer: Buffer })
   obra.codigo = generateObraCode(obra.nome, 'PDF');
   detected.add('codigo');
 
-  obra.descricao = `Documento PDF importado (${input.name}).`;
+  obra.descricao = textBlocks.length
+    ? `Documento PDF importado (${input.name}): ${textBlocks.slice(0, 2).join(' ')}`.slice(0, 250)
+    : `Documento PDF importado (${input.name}).`;
   detected.add('descricao');
 
   return finalizePreview({
