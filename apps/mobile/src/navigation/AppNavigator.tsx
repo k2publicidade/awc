@@ -17,13 +17,13 @@ import { RequisicaoScreen } from "../screens/RequisicaoScreen";
 import { CronogramaScreen } from "../screens/CronogramaScreen";
 import { OcorrenciaScreen } from "../screens/OcorrenciaScreen";
 import { NotificacaoScreen } from "../screens/NotificacaoScreen";
+import { MaisScreen } from "../screens/MaisScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const TAB_ICONS: Record<string, string> = {
-  Home: "🏠", RDO: "📋", Fotos: "📷", Check: "✅",
-  Pedido: "📦", Gantt: "📊", Alerta: "⚠️", Bell: "🔔",
+  Home: "🏠", RDO: "📋", Fotos: "📷", Check: "✅", Mais: "•••",
 };
 
 const TabIcon = ({ name, size }: { name: string; color: string; size: number }) => (
@@ -36,7 +36,9 @@ function MainTabs() {
       screenOptions={{
         tabBarActiveTintColor: COLORS.orange,
         tabBarInactiveTintColor: COLORS.gray,
-        tabBarStyle: { backgroundColor: COLORS.white, borderTopColor: "#E5E7EB" },
+        tabBarStyle: { backgroundColor: COLORS.white, borderTopColor: "#D5DBE0", minHeight: 58, paddingBottom: 5 },
+        tabBarItemStyle: { minWidth: 68 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
         headerStyle: { backgroundColor: COLORS.dark },
         headerTintColor: COLORS.white,
         headerTitleStyle: { fontWeight: "700" },
@@ -46,10 +48,7 @@ function MainTabs() {
       <Tab.Screen name="RDO" component={RDOListScreen} options={{ title: "RDO", tabBarIcon: (props) => <TabIcon name="RDO" {...props} /> }} />
       <Tab.Screen name="Fotos" component={GaleriaScreen} options={{ title: "Fotos", tabBarIcon: (props) => <TabIcon name="Fotos" {...props} /> }} />
       <Tab.Screen name="Check" component={ChecklistScreen} options={{ title: "Inspeção", tabBarIcon: (props) => <TabIcon name="Check" {...props} /> }} />
-      <Tab.Screen name="Pedido" component={RequisicaoScreen} options={{ title: "Material", tabBarIcon: (props) => <TabIcon name="Pedido" {...props} /> }} />
-      <Tab.Screen name="Gantt" component={CronogramaScreen} options={{ title: "Crono", tabBarIcon: (props) => <TabIcon name="Gantt" {...props} /> }} />
-      <Tab.Screen name="Alerta" component={OcorrenciaScreen} options={{ title: "Ocorr.", tabBarIcon: (props) => <TabIcon name="Alerta" {...props} /> }} />
-      <Tab.Screen name="Bell" component={NotificacaoScreen} options={{ title: "Avisos", tabBarIcon: (props) => <TabIcon name="Bell" {...props} /> }} />
+      <Tab.Screen name="Mais" component={MaisScreen} options={{ title: "Mais", tabBarIcon: (props) => <TabIcon name="Mais" {...props} /> }} />
     </Tab.Navigator>
   );
 }
@@ -59,6 +58,10 @@ function MainStack() {
     <Stack.Navigator>
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
       <Stack.Screen name="RDOForm" component={RDOFormScreen} options={{ title: "Novo RDO", presentation: "modal", headerStyle: { backgroundColor: COLORS.dark }, headerTintColor: COLORS.white }} />
+      <Stack.Screen name="Pedido" component={RequisicaoScreen} options={{ title: "Materiais", headerStyle: { backgroundColor: COLORS.dark }, headerTintColor: COLORS.white }} />
+      <Stack.Screen name="Gantt" component={CronogramaScreen} options={{ title: "Cronograma", headerStyle: { backgroundColor: COLORS.dark }, headerTintColor: COLORS.white }} />
+      <Stack.Screen name="Alerta" component={OcorrenciaScreen} options={{ title: "Ocorrências", headerStyle: { backgroundColor: COLORS.dark }, headerTintColor: COLORS.white }} />
+      <Stack.Screen name="Bell" component={NotificacaoScreen} options={{ title: "Avisos", headerStyle: { backgroundColor: COLORS.dark }, headerTintColor: COLORS.white }} />
     </Stack.Navigator>
   );
 }

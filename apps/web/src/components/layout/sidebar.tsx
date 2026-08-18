@@ -102,7 +102,7 @@ export function Sidebar({
               {roleLabel[userRole] || userRole}
             </p>
           </div>
-          <Settings className="h-4 w-4 shrink-0 text-slate-500 hover:text-slate-350 transition-colors" />
+          <Settings className="h-4 w-4 shrink-0 text-slate-500 transition-colors hover:text-slate-300" />
         </Link>
       </div>
     </aside>

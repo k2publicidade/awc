@@ -1,6 +1,7 @@
 import type React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { CrudModule } from '@/components/crud-module';
 import { cn } from '@/lib/utils';
 import { alerts, kpis, modules, obras, people } from '@/lib/demo-data';
 import {
@@ -47,7 +48,7 @@ export function PageHeader({
   eyebrow?: string;
 }) {
   return (
-    <div className="space-y-3">
+    <header className="space-y-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="mb-2 text-xs font-medium text-slate-500">
@@ -56,7 +57,7 @@ export function PageHeader({
           <h1 className="rigor-title text-3xl leading-none">{title}</h1>
           {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm">
             <Filter className="mr-2 h-4 w-4" />
             Filtros
@@ -83,18 +84,26 @@ export function PageHeader({
         </div>
       </div>
       {tabs.length > 0 && (
-        <div className="flex gap-3 overflow-x-auto border-b border-slate-200">
+        <nav
+          aria-label={`Seções de ${title}`}
+          className="flex gap-3 overflow-x-auto border-b border-slate-200"
+        >
           {tabs.map((tab, i) => (
             <button
+              type="button"
               key={tab}
-              className={cn('rigor-tab whitespace-nowrap', i === 0 && 'rigor-tab-active')}
+              aria-current={i === 0 ? 'page' : undefined}
+              className={cn(
+                'rigor-tab whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rigor-orange focus-visible:ring-offset-2',
+                i === 0 && 'rigor-tab-active'
+              )}
             >
               {tab}
             </button>
           ))}
-        </div>
+        </nav>
       )}
-    </div>
+    </header>
   );
 }
 
@@ -112,7 +121,7 @@ export function StatCard({
   tone?: string;
 }) {
   return (
-    <div className="rigor-card p-4">
+    <article className="rigor-card p-4">
       <div className="flex items-center gap-4">
         <div
           className={cn(
@@ -130,7 +139,7 @@ export function StatCard({
           <p className="text-xs text-slate-500">{hint}</p>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -198,9 +207,47 @@ export function ObrasScreen() {
   );
 }
 
-export function ModuleScreen({ name }: { name: string }) {
+type ModuleScreenMode = 'preview' | 'live';
+
+const liveModules = new Set([
+  'andamento',
+  'financeiro',
+  'materiais',
+  'equipe',
+  'documentos',
+  'qualidade',
+  'seguranca',
+]);
+
+/**
+ * A mesma moldura visual atende protótipos e módulos operacionais. No modo live,
+ * o conteúdo vem do CrudModule e mantém busca, paginação, mutações e exportação reais.
+ */
+export function ModuleScreen({
+  name,
+  mode = 'preview',
+}: {
+  name: string;
+  mode?: ModuleScreenMode;
+}) {
   const mod = modules[name] || modules.relatorios;
   const Icon = mod.icon;
+
+  if (mode === 'live' && liveModules.has(name)) {
+    return (
+      <section
+        aria-label={mod.title}
+        className="relative isolate mx-auto w-full max-w-[1540px] rounded-[18px]"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_92%_0%,rgba(255,90,0,0.09),transparent_34%),linear-gradient(to_bottom,rgba(248,250,252,0.82),transparent)]"
+        />
+        <CrudModule module={name} />
+      </section>
+    );
+  }
+
   const actionHref: Record<string, string> = {
     rdo: '/rdo/novo',
     obras: '/obras/novo',
@@ -253,7 +300,14 @@ function SectionTitle({ title, action }: { title: string; action?: string }) {
   return (
     <div className="mb-4 flex items-center justify-between">
       <h2 className="rigor-title text-xl">{title}</h2>
-      {action && <button className="text-sm font-semibold text-rigor-orange">{action}</button>}
+      {action && (
+        <button
+          type="button"
+          className="rounded text-sm font-semibold text-rigor-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rigor-orange focus-visible:ring-offset-2"
+        >
+          {action}
+        </button>
+      )}
     </div>
   );
 }
@@ -276,8 +330,16 @@ function Pill({ children, tone = 'success' }: { children: React.ReactNode; tone?
   );
 }
 function Progress({ value, tone = 'orange' }: { value: number; tone?: string }) {
+  const normalizedValue = Math.min(100, Math.max(0, value));
   return (
-    <div className="h-2 w-full rounded-full bg-slate-100">
+    <div
+      role="progressbar"
+      aria-label="Progresso"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={normalizedValue}
+      className="h-2 w-full rounded-full bg-slate-100"
+    >
       <div
         className={cn(
           'h-2 rounded-full',
@@ -287,7 +349,7 @@ function Progress({ value, tone = 'orange' }: { value: number; tone?: string }) 
               ? 'bg-rigor-success'
               : 'bg-rigor-orange'
         )}
-        style={{ width: `${value}%` }}
+        style={{ width: `${normalizedValue}%` }}
       />
     </div>
   );
@@ -297,6 +359,7 @@ export function ObrasTable({ compact = false }: { compact?: boolean }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
+        <caption className="sr-only">Obras, responsáveis, prazos, avanço e status</caption>
         <thead className="border-b bg-slate-50 text-xs uppercase text-slate-500">
           <tr>
             <th className="px-3 py-3">Obra</th>
@@ -312,7 +375,10 @@ export function ObrasTable({ compact = false }: { compact?: boolean }) {
           {obras.map((o) => (
             <tr key={o.codigo} className="border-b last:border-0 hover:bg-slate-50">
               <td className="px-3 py-3">
-                <Link href="/obras" className="font-semibold text-slate-900 hover:text-rigor-orange">
+                <Link
+                  href="/obras"
+                  className="font-semibold text-slate-900 hover:text-rigor-orange"
+                >
                   {o.nome}
                 </Link>
                 <p className="text-xs text-slate-500">

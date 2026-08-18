@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Bell, ChevronDown, KeyRound, LogOut, Menu, Search, Settings } from 'lucide-react';
+import { Bell, ChevronDown, KeyRound, LogOut, Menu, Search, Settings, X } from 'lucide-react';
 
 function initials(name?: string | null) {
   if (!name) return 'U';
@@ -43,6 +43,7 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const pathname = usePathname();
   const [naoLidas, setNaoLidas] = useState(0);
   const [busca, setBusca] = useState('');
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const currentModule = pathname.split('/')[1] || '';
   const targetModule = searchableModules[currentModule] ? currentModule : 'obras';
@@ -70,15 +71,16 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
     if (!term) return;
     router.push(`/${targetModule}?busca=${encodeURIComponent(term)}`);
     setBusca('');
+    setMobileSearchOpen(false);
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 text-slate-850 backdrop-blur-md shadow-[0_2px_12px_rgba(0,0,0,0.015)] sm:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/80 px-4 text-slate-900 backdrop-blur-md shadow-[0_2px_12px_rgba(0,0,0,0.015)] sm:px-8">
       <div className="flex min-w-0 flex-1 items-center gap-6">
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-slate-655 hover:bg-slate-100 hover:text-slate-900 lg:hidden"
+          className="h-11 w-11 text-slate-600 hover:bg-slate-100 hover:text-slate-900 lg:hidden"
           onClick={onMenuClick}
           aria-label="Abrir menu"
         >
@@ -97,10 +99,19 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         </div>
       </div>
       <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => setMobileSearchOpen((open) => !open)}
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 md:hidden"
+          aria-label={mobileSearchOpen ? 'Fechar busca' : 'Abrir busca'}
+          aria-expanded={mobileSearchOpen}
+        >
+          {mobileSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+        </button>
         <Link
           href="/notificacoes"
           title="Notificações"
-          className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-850 transition-colors"
+          className="relative flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
         >
           <Bell className="h-5 w-5 stroke-[2]" />
           {naoLidas > 0 && (
@@ -115,7 +126,7 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
               className="flex h-10 items-center gap-2.5 border-l border-slate-200/80 pl-4 cursor-pointer focus:outline-none"
               aria-label="Menu da conta"
             >
-              <Avatar className="h-9 w-9 border border-slate-250">
+              <Avatar className="h-9 w-9 border border-slate-200">
                 <AvatarImage src={(user as DynamicValue)?.avatarUrl} />
                 <AvatarFallback className="bg-gradient-to-br from-[#ff5a00] to-[#ff7a1a] text-[11px] font-black text-white">
                   {initials(user?.name)}
@@ -166,6 +177,33 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      {mobileSearchOpen && (
+        <form
+          className="absolute inset-x-3 top-[58px] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl md:hidden"
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitSearch();
+          }}
+        >
+          <label htmlFor="mobile-global-search" className="mb-2 block text-[10px] font-black uppercase tracking-[.16em] text-slate-500">
+            Buscar em {targetLabel}
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              id="mobile-global-search"
+              autoFocus
+              value={busca}
+              onChange={(event) => setBusca(event.target.value)}
+              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-20 text-sm outline-none focus:border-[#ff5a00] focus:bg-white focus:ring-4 focus:ring-orange-100"
+              placeholder="Nome, código ou documento"
+            />
+            <button type="submit" className="absolute right-1.5 top-1.5 h-8 rounded-lg bg-[#ff5a00] px-3 text-[10px] font-black text-white">
+              Buscar
+            </button>
+          </div>
+        </form>
+      )}
     </header>
   );
 }

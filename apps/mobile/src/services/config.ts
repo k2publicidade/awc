@@ -1,8 +1,28 @@
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 
 export const getApiUrl = () => {
-  if (Platform.OS === "web") return process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api";
-  return process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:3000/api";
+  const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+  const configuredUrl = Constants.expoConfig?.extra?.apiUrl;
+  const appConfigUrl = typeof configuredUrl === "string" ? configuredUrl.trim() : "";
+  const explicitUrl = envUrl || appConfigUrl;
+  if (explicitUrl) return explicitUrl.replace(/\/$/, "");
+
+  if (__DEV__) {
+    return Platform.OS === "android" ? "http://10.0.2.2:3000/api" : "http://localhost:3000/api";
+  }
+
+  throw new Error(
+    "API do RIGOR não configurada. Defina EXPO_PUBLIC_API_URL no build de release ou expo.extra.apiUrl no app config."
+  );
+};
+
+/** Converte caminhos persistidos pelo backend em URLs utilizáveis pelo Image nativo. */
+export const resolveApiAssetUrl = (url: string) => {
+  if (!url || /^(https?:|file:|data:)/i.test(url)) return url;
+  const apiUrl = getApiUrl().replace(/\/$/, "");
+  const origin = apiUrl.replace(/\/api$/, "");
+  return `${origin}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
 export const COLORS = {

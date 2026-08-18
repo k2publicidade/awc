@@ -22,7 +22,7 @@ export default function RequiredPasswordChangePage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Não foi possível alterar a senha');
-      router.push('/');
+      router.push('/dashboard');
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível alterar a senha');

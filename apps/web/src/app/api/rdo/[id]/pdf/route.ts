@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import sharp from 'sharp';
 import prisma from '@/lib/prisma';
-import { wrapReport } from '@/lib/reports/pdf-generator';
 import { requireSession } from '@/lib/session-context';
 import { canAccessResource } from '@/lib/authorization';
+import { readUpload } from '@/lib/storage';
+import { generateRdoPdf } from '@/lib/reports/rdo-pdf';
+
+export const runtime = 'nodejs';
 
 /** GET /api/rdo/[id]/pdf — generate RDO PDF */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -30,22 +34,42 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const climaManha = rdo.climas.find((c) => c.periodo === 'MANHA');
   const climaTarde = rdo.climas.find((c) => c.periodo === 'TARDE');
 
-  const html = wrapReport(
-    `
-    <h2>RDO Nº ${rdo.numero} — ${new Date(rdo.data).toLocaleDateString('pt-BR')}</h2>
-    <p><strong>Obra:</strong> ${rdo.obra.nome}</p>
-    <p><strong>Responsável:</strong> ${rdo.responsavel?.name || '-'}</p>
-    ${rdo.climas.length > 0 ? `<h3>Clima</h3><p>Manhã: ${climaManha?.condicao || '-'} | Tarde: ${climaTarde?.condicao || '-'}</p>` : ''}
-    ${rdo.efetivos.length > 0 ? `<h3>Efetivo</h3><table><tr><th>Função</th><th>Presentes</th><th>Ausentes</th></tr>${rdo.efetivos.map((e) => `<tr><td>${e.funcao}</td><td>${e.quantidadePresente}</td><td>${e.quantidadeAusente}</td></tr>`).join('')}</table>` : ''}
-    ${rdo.atividades.length > 0 ? `<h3>Atividades</h3><table><tr><th>Descrição</th><th>Etapa</th><th>%</th></tr>${rdo.atividades.map((a) => `<tr><td>${a.descricao}</td><td>${a.etapa?.nome || '-'}</td><td>${a.percentualExecutado || 0}%</td></tr>`).join('')}</table>` : ''}
-    ${rdo.equipamentos.length > 0 ? `<h3>Equipamentos</h3><table><tr><th>Equipamento</th><th>Horas</th></tr>${rdo.equipamentos.map((e) => `<tr><td>${e.equipamento}</td><td>${e.horasTrabalhadas}h</td></tr>`).join('')}</table>` : ''}
-    ${rdo.observacoes ? `<h3>Observações</h3><p>${rdo.observacoes}</p>` : ''}
-  `,
-    'Relatório Diário de Obra',
-    rdo.obra.nome
+  const photos = await Promise.all(
+    rdo.fotos.map(async (foto) => {
+      if (!foto.url.startsWith('/api/uploads/')) return null;
+      const stored = await readUpload(foto.url.slice('/api/uploads/'.length));
+      if (!stored.ok) return null;
+      const contentType = stored.headers.get('content-type')?.split(';')[0].toLowerCase();
+      if (!contentType?.startsWith('image/')) return null;
+      const original = Buffer.from(await stored.arrayBuffer());
+      try {
+        const jpeg = contentType === 'image/jpeg'
+          ? original
+          : await sharp(original, { failOn: 'warning' }).rotate().jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+        return { bytes: new Uint8Array(jpeg), legenda: foto.legenda, data: foto.data };
+      } catch {
+        return null;
+      }
+    })
   );
+  const pdf = generateRdoPdf({
+    numero: rdo.numero,
+    data: rdo.data,
+    obra: rdo.obra.nome,
+    responsavel: rdo.responsavel?.name || rdo.assinaturaNome || '-',
+    clima: rdo.climas.length ? `Manhã: ${climaManha?.condicao || '-'} | Tarde: ${climaTarde?.condicao || '-'}` : undefined,
+    efetivos: rdo.efetivos.map((item) => ({ funcao: item.funcao, presentes: item.quantidadePresente, ausentes: item.quantidadeAusente })),
+    atividades: rdo.atividades.map((item) => ({ descricao: item.descricao, etapa: item.etapa?.nome || '-', percentual: item.percentualExecutado || 0 })),
+    equipamentos: rdo.equipamentos.map((item) => ({ nome: item.equipamento, horas: Number(item.horasTrabalhadas) })),
+    observacoes: rdo.observacoes,
+    fotos: photos.filter((photo): photo is NonNullable<typeof photo> => Boolean(photo)),
+  });
 
-  return new NextResponse(html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  return new NextResponse(new Uint8Array(pdf), {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="RDO-${rdo.numero}.pdf"`,
+      'Cache-Control': 'private, no-store',
+    },
   });
 }

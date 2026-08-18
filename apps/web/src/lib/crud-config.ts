@@ -3,6 +3,10 @@ export type CrudRelation = "obras" | "users" | "fornecedores" | "materiais" | "t
 export type CrudField = { name: string; label: string; type: CrudFieldType; required?: boolean; options?: string[]; relation?: CrudRelation; placeholder?: string; list?: boolean; accept?: string; uploadCategory?: string };
 export type CrudResource = { key: string; title: string; subtitle: string; model: string; idPrefix: string; fields: CrudField[]; searchFields: string[]; orderBy?: Record<string, "asc" | "desc">; include?: Record<string, DynamicValue>; tenantScoped?: boolean };
 
+// Mantem o seletor de imagens alinhado aos formatos aceitos pelo storage.
+// `image/*` tambem oferece SVG e outros formatos que o endpoint recusa.
+export const PHOTO_UPLOAD_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif';
+
 const obraInclude = { obra: { select: { id: true, nome: true, codigo: true } } };
 const userSelect = { select: { id: true, name: true } };
 const etapaSelect = { select: { id: true, nome: true } };
@@ -199,8 +203,8 @@ export const resourceConfig: Record<string, CrudResource> = {
     { name: "prazo", label: "Prazo", type: "date", list: true },
     { name: "status", label: "Status", type: "select", options: ["ABERTA", "EM_EXECUCAO", "VERIFICACAO", "ENCERRADA"], list: true },
     { name: "acaoCorretiva", label: "Ação corretiva", type: "textarea" },
-    { name: "fotoAntesUrl", label: "Foto antes", type: "file", accept: "image/*", uploadCategory: "qualidade" },
-    { name: "fotoDepoisUrl", label: "Foto depois", type: "file", accept: "image/*", uploadCategory: "qualidade" }
+    { name: "fotoAntesUrl", label: "Foto antes", type: "file", accept: PHOTO_UPLOAD_ACCEPT, uploadCategory: "qualidade" },
+    { name: "fotoDepoisUrl", label: "Foto depois", type: "file", accept: PHOTO_UPLOAD_ACCEPT, uploadCategory: "qualidade" }
   ]},
 
   inspecoes: { key: "inspecoes", title: "Inspeções", subtitle: "Inspeções de qualidade por etapa", model: "inspecao", idPrefix: "INSP", searchFields: ["observacao"], orderBy: { data: "desc" }, include: { obra: { select: { id: true, nome: true } }, etapa: etapaSelect, responsavel: userSelect }, fields: [
@@ -237,7 +241,7 @@ export const resourceConfig: Record<string, CrudResource> = {
   galeria: { key: "galeria", title: "Galeria", subtitle: "Fotos por obra, etapa e RDO", model: "foto", idPrefix: "FTO", searchFields: ["legenda", "tags", "url"], orderBy: { data: "desc" }, include: { obra: { select: { id: true, nome: true } }, etapa: etapaSelect }, fields: [
     { name: "obraId", label: "Obra", type: "select", relation: "obras", required: true, list: true },
     { name: "etapaId", label: "Etapa", type: "select", relation: "etapas" },
-    { name: "url", label: "Foto", type: "file", required: true, accept: "image/*", uploadCategory: "galeria" },
+    { name: "url", label: "Foto", type: "file", required: true, accept: PHOTO_UPLOAD_ACCEPT, uploadCategory: "galeria" },
     { name: "legenda", label: "Legenda", type: "text", list: true },
     { name: "tags", label: "Tags", type: "text", list: true },
     { name: "data", label: "Data", type: "date", list: true }

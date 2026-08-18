@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { MobileDock } from '@/components/layout/mobile-dock';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -20,8 +21,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </Sheet>
       <div className="lg:pl-[253px]">
         <Topbar onMenuClick={() => setMobileOpen(true)} />
-        <main className="min-h-[calc(100vh-64px)] p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-h-[calc(100vh-64px)] p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8 lg:pb-8">
+          {children}
+        </main>
       </div>
+      <MobileDock onMenuClick={() => setMobileOpen(true)} />
     </div>
   );
 }

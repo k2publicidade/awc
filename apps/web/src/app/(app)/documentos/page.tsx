@@ -1,5 +1,5 @@
-import { CrudModule } from '@/components/crud-module';
+import { ModuleScreen } from '@/components/pro-ui';
 
 export default function Page() {
-  return <CrudModule module="documentos" />;
+  return <ModuleScreen name="documentos" mode="live" />;
 }

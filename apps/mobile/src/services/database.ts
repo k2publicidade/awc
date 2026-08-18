@@ -16,6 +16,7 @@ const initTables = async () => {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS rdo_offline (
       id TEXT PRIMARY KEY,
+      remoteId TEXT,
       obraId TEXT NOT NULL,
       jsonData TEXT NOT NULL,
       sincronizado INTEGER DEFAULT 0,
@@ -24,6 +25,7 @@ const initTables = async () => {
     CREATE TABLE IF NOT EXISTS fotos_offline (
       id TEXT PRIMARY KEY,
       rdoId TEXT,
+      rdoLocalId TEXT,
       obraId TEXT NOT NULL,
       etapaId TEXT,
       dataUrl TEXT NOT NULL,
@@ -50,6 +52,16 @@ const initTables = async () => {
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // Migração aditiva para bancos criados por versões anteriores do aplicativo.
+  const rdoColumns = await db.getAllAsync<{ name: string }>("PRAGMA table_info(rdo_offline)");
+  if (!rdoColumns.some((column) => column.name === "remoteId")) {
+    await db.execAsync("ALTER TABLE rdo_offline ADD COLUMN remoteId TEXT");
+  }
+  const fotoColumns = await db.getAllAsync<{ name: string }>("PRAGMA table_info(fotos_offline)");
+  if (!fotoColumns.some((column) => column.name === "rdoLocalId")) {
+    await db.execAsync("ALTER TABLE fotos_offline ADD COLUMN rdoLocalId TEXT");
+  }
 };
 
 // ---------- RDO ----------
@@ -67,9 +79,18 @@ export const getRDOsOffline = async () => {
   return database.getAllAsync("SELECT * FROM rdo_offline WHERE sincronizado = 0 ORDER BY createdAt ASC");
 };
 
-export const markRDOSynced = async (id: string) => {
+export const markRDOSynced = async (id: string, remoteId: string) => {
   const database = await getDB();
-  await database.runAsync("UPDATE rdo_offline SET sincronizado = 1 WHERE id = ?", [id]);
+  await database.runAsync("UPDATE rdo_offline SET sincronizado = 1, remoteId = ? WHERE id = ?", [remoteId, id]);
+};
+
+export const getRemoteRDOId = async (localId: string): Promise<string | null> => {
+  const database = await getDB();
+  const row = await database.getFirstAsync<{ remoteId: string | null }>(
+    "SELECT remoteId FROM rdo_offline WHERE id = ?",
+    [localId]
+  );
+  return row?.remoteId || null;
 };
 
 export const countPendentes = async (): Promise<number> => {
@@ -84,12 +105,20 @@ export const countPendentes = async (): Promise<number> => {
 };
 
 // ---------- Fotos ----------
-/** dataUrl: imagem em data URI base64 (pronta para o campo url da galeria). */
-export const saveFotoOffline = async (id: string, obraId: string, dataUrl: string, legenda: string, etapaId?: string | null, rdoId?: string | null) => {
+/** dataUrl mantém o nome histórico, mas armazena URI local do JPEG com marca d'água. */
+export const saveFotoOffline = async (
+  id: string,
+  obraId: string,
+  dataUrl: string,
+  legenda: string,
+  etapaId?: string | null,
+  rdoId?: string | null,
+  rdoLocalId?: string | null
+) => {
   const database = await getDB();
   await database.runAsync(
-    "INSERT OR REPLACE INTO fotos_offline (id, obraId, dataUrl, legenda, etapaId, rdoId, uploaded) VALUES (?, ?, ?, ?, ?, ?, 0)",
-    [id, obraId, dataUrl, legenda, etapaId || null, rdoId || null]
+    "INSERT OR REPLACE INTO fotos_offline (id, obraId, dataUrl, legenda, etapaId, rdoId, rdoLocalId, uploaded) VALUES (?, ?, ?, ?, ?, ?, ?, 0)",
+    [id, obraId, dataUrl, legenda, etapaId || null, rdoId || null, rdoLocalId || null]
   );
 };
 

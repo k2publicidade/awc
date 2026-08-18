@@ -53,7 +53,7 @@ function StatCard({
           <Icon className="h-6 w-6 stroke-[2]" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-450">{label}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{label}</p>
           <p className="text-2xl font-black leading-tight text-slate-900 tracking-tight mt-0.5">
             {value}
           </p>
@@ -286,7 +286,7 @@ export default async function DashboardPage() {
                           >
                             {o.nome}
                           </Link>
-                          <p className="text-[11.5px] font-medium text-slate-450 mt-0.5">
+                          <p className="text-[11.5px] font-medium text-slate-500 mt-0.5">
                             {o.codigo}
                             {o.cidade ? ` · ${o.cidade}/${o.estado || ''}` : ''}
                           </p>
@@ -294,7 +294,7 @@ export default async function DashboardPage() {
                         <td className="px-4 py-4 text-slate-600 font-medium">
                           {o.engenheiro?.name || '—'}
                         </td>
-                        <td className="px-4 py-4 text-slate-655 font-semibold text-xs uppercase">
+                        <td className="px-4 py-4 text-slate-600 font-semibold text-xs uppercase">
                           {o.dataPrevisaoFim
                             ? o.dataPrevisaoFim.toLocaleDateString('pt-BR', {
                                 month: 'short',
@@ -325,7 +325,7 @@ export default async function DashboardPage() {
                             className={cn(
                               'inline-flex rounded-lg px-2.5 py-1 text-[11px] font-black border',
                               risco === 'Atrasada'
-                                ? 'bg-red-50/50 text-red-650 border-red-100'
+                                ? 'bg-red-50/50 text-red-700 border-red-100'
                                 : risco === 'Atenção'
                                   ? 'bg-amber-50/50 text-amber-650 border-amber-100'
                                   : 'bg-emerald-50/50 text-emerald-650 border-emerald-100'
@@ -455,7 +455,7 @@ export default async function DashboardPage() {
               </Link>
               <Link
                 href="/seguranca"
-                className="flex-1 h-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-[13px] font-bold text-slate-655 hover:bg-slate-50 transition-colors"
+                className="flex-1 h-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 <ShieldCheck className="mr-1.5 h-4 w-4 text-[#ff5a00]" />
                 Segurança

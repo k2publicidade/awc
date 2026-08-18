@@ -1,11 +1,14 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { uploadFile } from '@/lib/upload-client';
-import { Camera, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { createWatermarkedEvidence } from '@/lib/photo-evidence';
+import { VoiceInputButton } from '@/components/voice-input-button';
+import { useAuth } from '@/hooks/use-auth';
+import { Camera, Loader2, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
 
 interface Obra {
   id: string;
@@ -27,6 +30,7 @@ interface Foto {
 }
 
 export default function GaleriaPage() {
+  const { user } = useAuth();
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraId, setObraId] = useState('');
   const [etapas, setEtapas] = useState<Etapa[]>([]);
@@ -36,6 +40,7 @@ export default function GaleriaPage() {
   const [showForm, setShowForm] = useState(false);
   const [lightbox, setLightbox] = useState<Foto | null>(null);
   const [error, setError] = useState('');
+  const legendaRef = useRef<HTMLInputElement>(null);
   const { confirm, dialog: confirmDialog } = useConfirm();
 
   useEffect(() => {
@@ -87,7 +92,16 @@ export default function GaleriaPage() {
       if (!(selected instanceof File) || selected.size === 0) {
         throw new Error('Selecione uma imagem do computador');
       }
-      const url = await uploadFile(selected, 'galeria');
+      const obra = obras.find((item) => item.id === obraId);
+      const evidence = await createWatermarkedEvidence(selected, {
+        obra: obra ? `${obra.codigo} — ${obra.nome}` : 'Obra não informada',
+        responsavel: user?.name || 'Responsável não informado',
+      });
+      const url = await uploadFile(evidence.file, 'galeria');
+      const userTags = String(fd.get('tags') || '').trim();
+      const gpsTag = evidence.location
+        ? `GPS:${evidence.location.latitude.toFixed(6)},${evidence.location.longitude.toFixed(6)}`
+        : 'LOCALIZACAO_INDISPONIVEL';
       const res = await fetch('/api/galeria', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,8 +110,8 @@ export default function GaleriaPage() {
           url,
           legenda: fd.get('legenda') || null,
           etapaId: fd.get('etapaId') || null,
-          tags: fd.get('tags') || null,
-          data: fd.get('data') || new Date().toISOString(),
+          tags: [userTags, gpsTag].filter(Boolean).join(', '),
+          data: evidence.capturedAt,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -234,6 +248,9 @@ export default function GaleriaPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
           onClick={() => setLightbox(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Visualização da evidência fotográfica"
         >
           <div className="max-h-[92vh] w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -255,10 +272,11 @@ export default function GaleriaPage() {
                 <button
                   onClick={() => excluir(lightbox)}
                   className="rounded p-2 text-red-300 hover:bg-white/10"
+                  aria-label="Excluir foto"
                 >
                   <Trash2 className="h-5 w-5" />
                 </button>
-                <button onClick={() => setLightbox(null)} className="rounded p-2 hover:bg-white/10">
+                <button onClick={() => setLightbox(null)} className="rounded p-2 hover:bg-white/10" aria-label="Fechar visualização">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -271,37 +289,64 @@ export default function GaleriaPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={() => setShowForm(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="galeria-add-title"
         >
           <div
             className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="rigor-title text-xl">Adicionar foto</h3>
+              <h3 id="galeria-add-title" className="rigor-title text-xl">Adicionar foto</h3>
               <button
                 onClick={() => setShowForm(false)}
                 className="rounded p-1 text-slate-500 hover:bg-slate-100"
+                aria-label="Fechar formulário"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={salvarFoto} className="space-y-4">
+              <div className="flex items-start gap-3 rounded-xl border border-orange-100 bg-orange-50/70 p-3">
+                <div className="rounded-lg bg-[#ff5a00] p-2 text-white">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Marca d’água RIGOR automática</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+                    Data, hora, obra, seu nome e GPS serão gravados na própria imagem.
+                  </p>
+                </div>
+              </div>
               <label className="block text-sm font-bold">
                 Imagem *
                 <input
                   name="foto"
                   type="file"
                   accept="image/*"
+                  capture="environment"
                   required
                   className="mt-1 block w-full cursor-pointer rounded-md border border-slate-200 bg-white text-sm font-normal text-slate-600 file:mr-3 file:border-0 file:border-r file:border-slate-200 file:bg-slate-50 file:px-3 file:py-2.5 file:text-xs file:font-bold file:text-slate-700 hover:file:bg-orange-50 hover:file:text-rigor-orange focus:outline-none focus:ring-4 focus:ring-orange-100"
                 />
               </label>
               <label className="block text-sm font-bold">
                 Legenda
-                <input
-                  name="legenda"
-                  className="mt-1 h-10 w-full rounded-md border border-slate-200 px-3 text-sm font-normal outline-none focus:border-rigor-orange"
-                />
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    ref={legendaRef}
+                    name="legenda"
+                    placeholder="Ex.: concretagem do bloco B"
+                    className="h-10 min-w-0 flex-1 rounded-md border border-slate-200 px-3 text-sm font-normal outline-none focus:border-rigor-orange focus:ring-4 focus:ring-orange-100"
+                  />
+                  <VoiceInputButton
+                    onTranscript={(text) => {
+                      if (!legendaRef.current) return;
+                      legendaRef.current.value = `${legendaRef.current.value}${legendaRef.current.value ? ' ' : ''}${text}`;
+                    }}
+                    label="Ditar legenda da foto"
+                  />
+                </div>
               </label>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block text-sm font-bold">
@@ -341,7 +386,8 @@ export default function GaleriaPage() {
                   Cancelar
                 </Button>
                 <Button type="submit" className="rigor-btn-primary" disabled={saving}>
-                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {saving ? 'Preparando evidência…' : 'Salvar evidência'}
                 </Button>
               </div>
             </form>

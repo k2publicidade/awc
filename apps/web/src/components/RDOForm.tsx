@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { uploadFile } from '@/lib/upload-client';
+import { createWatermarkedEvidence, type EvidenceLocation } from '@/lib/photo-evidence';
+import { VoiceInputButton } from '@/components/voice-input-button';
 import {
   Building2,
   Cloud,
@@ -23,6 +26,8 @@ import {
   Check,
   Loader2,
   ArrowLeft,
+  MapPin,
+  ShieldCheck,
 } from 'lucide-react';
 
 // ─── Types ───
@@ -46,6 +51,9 @@ interface Foto {
   id: string;
   src: string;
   legenda: string;
+  file?: File;
+  capturedAt?: string;
+  location?: EvidenceLocation | null;
 }
 
 // ─── Componente Principal ───
@@ -95,6 +103,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   // Fotos
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [deletedFotoIds, setDeletedFotoIds] = useState<string[]>([]);
+  const [processingPhotos, setProcessingPhotos] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Assinatura
@@ -246,25 +255,42 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const newFoto: Foto = {
-        id: String(Date.now()),
-        src: event.target?.result as string,
-        legenda: file.name,
-      };
-      setFotos([...fotos, newFoto]);
-    };
-    reader.readAsDataURL(file);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || []).slice(0, Math.max(0, 10 - fotos.length));
+    e.target.value = '';
+    if (selected.length === 0) return;
+    setProcessingPhotos(true);
+    setError('');
+    try {
+      const prepared: Foto[] = [];
+      for (const [index, file] of selected.entries()) {
+        const evidence = await createWatermarkedEvidence(file, {
+          obra: obraNome || 'Obra não informada',
+          responsavel: nomeAssinatura || engenheiro || 'Responsável não informado',
+        });
+        prepared.push({
+          id: `local-${Date.now()}-${index}`,
+          src: evidence.previewUrl,
+          file: evidence.file,
+          capturedAt: evidence.capturedAt,
+          location: evidence.location,
+          legenda: file.name.replace(/\.[^.]+$/, ''),
+        });
+      }
+      setFotos((current) => [...current, ...prepared].slice(0, 10));
+    } catch (photoError: DynamicValue) {
+      setError(photoError.message || 'Não foi possível preparar as fotos');
+    } finally {
+      setProcessingPhotos(false);
+    }
   };
 
   const handleRemoveFoto = (id: string) => {
     if (!/^\d+$/.test(id)) {
       setDeletedFotoIds((prev) => [...prev, id]);
     }
+    const removed = fotos.find((foto) => foto.id === id);
+    if (removed?.file && removed.src.startsWith('blob:')) URL.revokeObjectURL(removed.src);
     setFotos(fotos.filter((f) => f.id !== id));
   };
 
@@ -408,22 +434,32 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         }
       }
 
-      // Upload new photos
+      // Upload de novas fotos para o storage gerenciado antes de vinculá-las ao RDO.
       for (const foto of fotos) {
-        if (foto.src.startsWith('data:')) {
+        if (foto.file) {
           try {
-            await fetch('/api/galeria', {
+            const managedUrl = await uploadFile(foto.file, 'rdo');
+            const photoResponse = await fetch('/api/galeria', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 obraId,
-                url: foto.src,
+                url: managedUrl,
                 legenda: foto.legenda,
                 rdoId: savedRdoId,
+                data: foto.capturedAt,
+                tags: foto.location
+                  ? `GPS:${foto.location.latitude.toFixed(6)},${foto.location.longitude.toFixed(6)}`
+                  : 'LOCALIZACAO_INDISPONIVEL',
               }),
             });
+            if (!photoResponse.ok) {
+              const photoError = await photoResponse.json().catch(() => ({}));
+              throw new Error(photoError.error || 'Erro ao vincular foto ao RDO');
+            }
           } catch (err) {
             console.error('Erro ao fazer upload da foto:', err);
+            throw err;
           }
         }
       }
@@ -441,6 +477,14 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   const totalPresente = efetivo.reduce((sum, row) => sum + row.presente, 0);
   const totalFalta = efetivo.reduce((sum, row) => sum + row.faltaJustificada, 0);
   const totalAusente = efetivo.reduce((sum, row) => sum + row.ausente, 0);
+  const completedSections = [
+    Boolean(obraId && data && (engenheiro || nomeAssinatura)),
+    Boolean(tempManha || tempTarde),
+    efetivo.length > 0,
+    atividades.length > 0,
+    fotos.length > 0,
+    Boolean(confirmado),
+  ].filter(Boolean).length;
 
   if (loading) {
     return (
@@ -484,6 +528,39 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         <p className="mt-1 text-[14px] text-[#64707c]">Registre as informações diárias da obra</p>
       </div>
 
+      <div className="sticky top-[72px] z-20 mb-5 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur lg:hidden">
+        <div className="mb-2 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#ff5a00]">RDO em campo</p>
+            <p className="text-xs font-bold text-slate-800">{completedSections} de 6 etapas preenchidas</p>
+          </div>
+          <span className="rounded-full bg-slate-900 px-3 py-1 text-[10px] font-bold text-white">
+            {Math.round((completedSections / 6) * 100)}%
+          </span>
+        </div>
+        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#ff5a00] to-[#ff8a3d] transition-all"
+            style={{ width: `${(completedSections / 6) * 100}%` }}
+          />
+        </div>
+        <div className="grid grid-cols-6 gap-1" aria-label="Navegar pelas etapas do RDO">
+          {['Dados', 'Clima', 'Equipe', 'Ativ.', 'Fotos', 'Assinar'].map((label, index) => (
+            <a
+              key={label}
+              href={`#rdo-card-${index + 1}`}
+              className={cn(
+                'flex min-h-10 flex-col items-center justify-center rounded-lg text-[8.5px] font-bold',
+                index < completedSections ? 'bg-orange-50 text-[#d94c09]' : 'bg-slate-50 text-slate-500'
+              )}
+            >
+              <span className="text-[10px]">{index + 1}</span>
+              {label}
+            </a>
+          ))}
+        </div>
+      </div>
+
       {error && (
         <div className="mb-4 rounded-[4px] border border-red-200 bg-red-50 p-3 text-[13px] font-semibold text-red-700">
           {error}
@@ -491,9 +568,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
       )}
 
       {/* Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
+      <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[1fr_420px]">
         {/* ─── COLUNA ESQUERDA ─── */}
-        <div className="space-y-6">
+        <div className="contents xl:block xl:space-y-6">
           {/* Card 1: Identificação */}
           <Card
             numero={1}
@@ -608,7 +685,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
             titulo="EFETIVO PRESENTE"
             icone={<Users className="h-5 w-5 text-[#ff5a00]" />}
           >
-            <div className="overflow-x-auto">
+            <div className={efetivo.length === 0 ? "hidden overflow-x-auto md:block" : "overflow-x-auto"}>
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="border-b border-[#e5e7eb]">
@@ -727,19 +804,19 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                 Nenhuma função cadastrada. Adicione abaixo.
               </p>
             )}
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
               <input
                 type="text"
                 value={novaFuncao}
                 onChange={(e) => setNovaFuncao(e.target.value)}
                 placeholder="Nova função..."
-                className="h-[36px] flex-1 rounded-[4px] border border-[#e5e7eb] px-3 text-[13px] text-[#374151] outline-none focus:border-[#ff5a00]"
+                className="h-[42px] min-w-0 flex-1 rounded-[6px] border border-[#e5e7eb] px-3 text-[13px] text-[#374151] outline-none focus:border-[#ff5a00] sm:h-[36px]"
                 onKeyDown={(e) => e.key === 'Enter' && handleAddFuncao()}
               />
               <Button
                 onClick={handleAddFuncao}
                 variant="outline"
-                className="h-[36px] border-[#ff5a00] text-[#ff5a00] hover:bg-[#fff7f0] text-[13px] font-medium"
+                className="h-[42px] w-full border-[#ff5a00] text-[#ff5a00] hover:bg-[#fff7f0] text-[13px] font-medium sm:h-[36px] sm:w-auto"
               >
                 <Plus className="h-4 w-4 mr-1" /> Adicionar função
               </Button>
@@ -752,8 +829,21 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
             titulo="FOTOS DO DIA"
             icone={<Camera className="h-5 w-5 text-[#ff5a00]" />}
           >
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-[12px] text-[#64707c]">{fotos.length}/10 fotos</span>
+            <div className="mb-4 flex flex-col gap-3 rounded-xl border border-orange-100 bg-gradient-to-r from-orange-50 to-white p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-2.5">
+                <div className="mt-0.5 rounded-lg bg-[#ff5a00] p-2 text-white shadow-sm">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-[12px] font-bold text-slate-800">Evidência autenticada no dispositivo</p>
+                  <p className="mt-0.5 max-w-xl text-[11px] leading-relaxed text-slate-500">
+                    Cada imagem recebe data, hora, obra, responsável e coordenadas antes do envio.
+                  </p>
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-slate-600 shadow-sm ring-1 ring-slate-200">
+                {fotos.length}/10 fotos
+              </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {fotos.map((foto) => (
@@ -776,15 +866,28 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                     <Trash2 className="h-3 w-3 text-red-500" />
                   </button>
                   <p className="px-2 py-1.5 text-[11px] text-[#64707c] truncate">{foto.legenda}</p>
+                  {foto.location && (
+                    <div className="flex items-center gap-1 border-t border-slate-100 px-2 py-1 text-[9px] font-semibold text-emerald-700">
+                      <MapPin className="h-3 w-3" /> GPS registrado
+                    </div>
+                  )}
                 </div>
               ))}
               {fotos.length < 10 && (
                 <button
                   onClick={handleAddFoto}
+                  disabled={processingPhotos || !obraId}
                   className="flex flex-col items-center justify-center rounded-[8px] border-2 border-dashed border-[#d1d5db] bg-[#f9fafb] h-[158px] hover:border-[#ff5a00] hover:bg-[#fff7f0] transition"
                 >
-                  <Camera className="h-8 w-8 text-[#9aa3ad] mb-1" />
-                  <span className="text-[12px] text-[#9aa3ad]">+ Adicionar foto</span>
+                  {processingPhotos ? (
+                    <Loader2 className="mb-2 h-7 w-7 animate-spin text-[#ff5a00]" />
+                  ) : (
+                    <Camera className="mb-2 h-8 w-8 text-[#ff5a00]" />
+                  )}
+                  <span className="text-[12px] font-bold text-slate-700">
+                    {processingPhotos ? 'Aplicando marca…' : 'Abrir câmera ou galeria'}
+                  </span>
+                  <span className="mt-1 text-[10px] text-slate-400">Pronto para celular</span>
                 </button>
               )}
             </div>
@@ -792,6 +895,8 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              capture="environment"
+              multiple
               onChange={handleFileChange}
               className="hidden"
             />
@@ -799,7 +904,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         </div>
 
         {/* ─── COLUNA DIREITA ─── */}
-        <div className="space-y-6">
+        <div className="contents xl:block xl:space-y-6">
           {/* Card 2: Condições Climáticas */}
           <Card
             numero={2}
@@ -965,12 +1070,20 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                   placeholder="Etapa"
                   className="h-[36px] w-full rounded-[4px] border border-[#e5e7eb] px-3 text-[13px] text-[#374151] outline-none focus:border-[#ff5a00]"
                 />
-                <input
-                  value={novaDescricao}
-                  onChange={(e) => setNovaDescricao(e.target.value)}
-                  placeholder="Descrição"
-                  className="h-[36px] w-full rounded-[4px] border border-[#e5e7eb] px-3 text-[13px] text-[#374151] outline-none focus:border-[#ff5a00]"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={novaDescricao}
+                    onChange={(e) => setNovaDescricao(e.target.value)}
+                    placeholder="Descrição da atividade"
+                    className="h-[40px] min-w-0 flex-1 rounded-[6px] border border-[#e5e7eb] px-3 text-[13px] text-[#374151] outline-none focus:border-[#ff5a00] focus:ring-4 focus:ring-orange-100"
+                  />
+                  <VoiceInputButton
+                    onTranscript={(text) =>
+                      setNovaDescricao((current) => `${current}${current ? ' ' : ''}${text}`)
+                    }
+                    label="Ditar descrição da atividade"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -1082,29 +1195,29 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
       </div>
 
       {/* Rodapé - Botões */}
-      <div className="mt-8 flex items-center justify-between gap-3">
+      <div className="sticky bottom-24 z-20 mx-0 mt-8 flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-[0_-10px_35px_rgba(15,23,42,.10)] backdrop-blur lg:static lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
         <Button
           variant="outline"
           onClick={() => router.push('/rdo')}
-          className="h-[44px] px-6 border-[#d1d5db] text-[#374151] text-[14px] font-medium rounded-[6px]"
+          className="hidden h-[44px] px-6 border-[#d1d5db] text-[#374151] text-[14px] font-medium rounded-[6px] sm:inline-flex"
         >
           Cancelar
         </Button>
-        <div className="flex items-center gap-3">
-          <span className="text-[12px] text-[#9aa3ad]">Rascunho salvo automaticamente</span>
+        <div className="flex flex-1 items-center justify-end gap-2 lg:gap-3">
+          <span className="hidden text-[12px] text-[#9aa3ad] lg:inline">Salve como rascunho para continuar depois</span>
           <Button
             variant="outline"
             onClick={() => handleSalvar('RASCUNHO')}
-            disabled={saving}
-            className="h-[44px] px-6 border-[#d1d5db] text-[#374151] text-[14px] font-medium rounded-[6px]"
+            disabled={saving || processingPhotos}
+            className="h-[46px] flex-1 px-3 border-[#d1d5db] text-[#374151] text-[12px] font-bold rounded-xl sm:flex-none sm:px-6 sm:text-[14px]"
           >
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Salvar Rascunho
           </Button>
           <Button
             onClick={() => handleSalvar('APROVADO')}
-            disabled={saving || !confirmado}
-            className="h-[44px] px-6 bg-[#ff5a00] text-white text-[14px] font-medium rounded-[6px] hover:bg-[#ef5200] shadow-[0_4px_12px_rgba(255,90,0,.2)] disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={saving || processingPhotos || !confirmado}
+            className="h-[46px] flex-[1.35] px-3 bg-[#ff5a00] text-white text-[12px] font-bold rounded-xl hover:bg-[#ef5200] shadow-[0_4px_12px_rgba(255,90,0,.2)] disabled:opacity-50 disabled:cursor-not-allowed sm:flex-none sm:px-6 sm:text-[14px]"
           >
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Assinar e Finalizar RDO
@@ -1128,7 +1241,11 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[8px] border border-[#e5e7eb] bg-white shadow-[0_1px_3px_rgba(0,0,0,.04)]">
+    <section
+      id={`rdo-card-${numero}`}
+      style={{ order: numero }}
+      className="w-full min-w-0 scroll-mt-48 overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-[0_1px_3px_rgba(0,0,0,.04)] sm:rounded-[12px]"
+    >
       <div className="flex items-center gap-2 px-5 py-4 border-b border-[#f3f4f6]">
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ff5a00] text-white text-[12px] font-bold">
           {numero}
@@ -1139,6 +1256,6 @@ function Card({
         </div>
       </div>
       <div className="p-5">{children}</div>
-    </div>
+    </section>
   );
 }

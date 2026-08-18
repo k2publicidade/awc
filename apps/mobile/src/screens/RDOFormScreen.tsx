@@ -8,6 +8,10 @@ import { useObraStore } from "../store/obraStore";
 import { useSyncStore } from "../store/syncStore";
 import { COLORS } from "../services/config";
 import { genId } from "../lib/id";
+import { useAuthStore } from "../store/authStore";
+import { FieldPhotoComposer, ComposedFieldPhoto } from "../components/FieldPhotoComposer";
+import { persistOfflinePhoto } from "../services/photos";
+import { VoiceTranscription } from "../components/VoiceTranscription";
 
 const climaOptions = ["ENSOLARADO", "NUBLADO", "CHUVOSO", "PARCIALMENTE_NUBLADO"];
 const climaLabels: Record<string, string> = {
@@ -15,11 +19,12 @@ const climaLabels: Record<string, string> = {
   CHUVOSO: "🌧️ Chuvoso", PARCIALMENTE_NUBLADO: "⛅ Parc. Nublado",
 };
 
-interface FotoLocal { dataUrl: string; legenda: string }
+interface FotoLocal { uri: string; legenda: string }
 
 export function RDOFormScreen({ navigation }: any) {
   const obra = useObraStore((s) => s.obra);
   const setPending = useSyncStore((s) => s.setPending);
+  const user = useAuthStore((s) => s.user);
 
   const [data, setData] = useState(new Date().toISOString().split("T")[0]);
   const [climaManha, setClimaManha] = useState("ENSOLARADO");
@@ -31,27 +36,30 @@ export function RDOFormScreen({ navigation }: any) {
   const [ocorrenciaTexto, setOcorrenciaTexto] = useState("");
   const [equipamentos, setEquipamentos] = useState([{ nome: "", horas: "0" }]);
   const [fotos, setFotos] = useState<FotoLocal[]>([]);
-  const [responsavelNome, setResponsavelNome] = useState("");
+  const [responsavelNome, setResponsavelNome] = useState(user?.name || "");
   const [responsavelCrea, setResponsavelCrea] = useState("");
   const [saving, setSaving] = useState(false);
+  const [photoQueue, setPhotoQueue] = useState<ImagePicker.ImagePickerAsset[]>([]);
 
   const addFotoFromResult = (result: ImagePicker.ImagePickerResult) => {
     if (result.canceled) return;
-    const novas = result.assets
-      .filter((a) => a.base64)
-      .map((a) => ({ dataUrl: `data:image/jpeg;base64,${a.base64}`, legenda: "" }));
-    setFotos((prev) => [...prev, ...novas]);
+    setPhotoQueue((current) => [...current, ...result.assets]);
+  };
+
+  const addComposedPhoto = (photo: ComposedFieldPhoto) => {
+    setFotos((current) => [...current, { uri: photo.uri, legenda: photo.legenda }]);
+    setPhotoQueue((current) => current.slice(1));
   };
 
   const pickImage = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) { Alert.alert("Permissão", "Autorize o uso da câmera nas configurações."); return; }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.5, base64: true });
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.82 });
     addFotoFromResult(result);
   };
 
   const pickFromGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.5, base64: true, allowsMultipleSelection: true, selectionLimit: 5 });
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.82, allowsMultipleSelection: true, selectionLimit: 5 });
     addFotoFromResult(result);
   };
 
@@ -95,16 +103,31 @@ export function RDOFormScreen({ navigation }: any) {
       if (isConnected) {
         const res = await rdoApi.create(payload);
         const rdoId = res.data?.id as string | undefined;
+        let queuedPhotos = 0;
         for (const f of fotos) {
           try {
-            await galeriaApi.upload({ obraId: obra.id, url: f.dataUrl, legenda: f.legenda, rdoId: rdoId || null });
-          } catch { /* foto individual falhou; segue */ }
+            await galeriaApi.uploadPhoto(f.uri, { obraId: obra.id, legenda: f.legenda, rdoId: rdoId || null });
+          } catch {
+            // O RDO não deve ser perdido se a conexão cair durante os arquivos.
+            const durableUri = await persistOfflinePhoto(f.uri);
+            await saveFotoOffline(genId(), obra.id, durableUri, f.legenda, null, rdoId || null);
+            queuedPhotos++;
+          }
         }
-        Alert.alert("Sucesso", "RDO enviado!", [{ text: "OK", onPress: () => navigation?.goBack() }]);
+        if (queuedPhotos) setPending(await getPendingCount());
+        Alert.alert(
+          "RDO registrado",
+          queuedPhotos
+            ? `${queuedPhotos} foto(s) ficaram protegidas no aparelho e serão sincronizadas depois.`
+            : "Relatório e fotos enviados com sucesso.",
+          [{ text: "OK", onPress: () => navigation?.goBack() }]
+        );
       } else {
-        await saveRDOOffline(genId(), obra.id, payload);
+        const localRdoId = genId();
+        await saveRDOOffline(localRdoId, obra.id, payload);
         for (const f of fotos) {
-          await saveFotoOffline(genId(), obra.id, f.dataUrl, f.legenda);
+          const durableUri = await persistOfflinePhoto(f.uri);
+          await saveFotoOffline(genId(), obra.id, durableUri, f.legenda, null, null, localRdoId);
         }
         setPending(await getPendingCount());
         Alert.alert("Salvo Offline", "O RDO será sincronizado quando houver conexão.", [{ text: "OK", onPress: () => navigation?.goBack() }]);
@@ -116,9 +139,11 @@ export function RDOFormScreen({ navigation }: any) {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.obraBanner}>
-          <Text style={styles.obraBannerText}>{obra ? `🏗️ ${obra.codigo} — ${obra.nome}` : "⚠️ Nenhuma obra selecionada"}</Text>
+          <Text style={styles.bannerEyebrow}>RELATÓRIO DIÁRIO · CAMPO</Text>
+          <Text style={styles.obraBannerText}>{obra ? `${obra.codigo} — ${obra.nome}` : "Nenhuma obra selecionada"}</Text>
+          <Text style={styles.bannerHint}>Registre o turno em blocos. Você pode salvar offline.</Text>
         </View>
 
         <Text style={styles.sectionTitle}>📅 Data</Text>
@@ -169,7 +194,8 @@ export function RDOFormScreen({ navigation }: any) {
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>⚠️ Ocorrências</Text>
-        <TextInput style={[styles.input, { height: 80 }]} multiline value={ocorrenciaTexto} onChangeText={setOcorrenciaTexto} placeholder="Descreva ocorrências do dia (opcional)..." />
+        <VoiceTranscription onInsert={(text) => setOcorrenciaTexto((current) => current.trim() ? `${current.trim()}\n${text}` : text)} />
+        <TextInput style={[styles.input, { height: 96, textAlignVertical: "top" }]} multiline value={ocorrenciaTexto} onChangeText={setOcorrenciaTexto} placeholder="Descreva ocorrências do dia (opcional)..." />
 
         <Text style={styles.sectionTitle}>🚜 Equipamentos</Text>
         {equipamentos.map((e, i) => (
@@ -191,7 +217,7 @@ export function RDOFormScreen({ navigation }: any) {
         </View>
         {fotos.map((f, i) => (
           <View key={i} style={styles.fotoItem}>
-            <Image source={{ uri: f.dataUrl }} style={styles.fotoThumb} />
+            <Image source={{ uri: f.uri }} style={styles.fotoThumb} />
             <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder="Legenda" value={f.legenda}
               onChangeText={(v) => { const n = [...fotos]; n[i].legenda = v; setFotos(n); }} />
             <TouchableOpacity onPress={() => setFotos(fotos.filter((_, j) => j !== i))}>
@@ -209,31 +235,41 @@ export function RDOFormScreen({ navigation }: any) {
         </TouchableOpacity>
         <View style={{ height: 40 }} />
       </ScrollView>
+      <FieldPhotoComposer
+        asset={photoQueue[0] || null}
+        obra={obra}
+        responsavel={responsavelNome || user?.name || "Responsável de campo"}
+        onCancel={() => setPhotoQueue((current) => current.slice(1))}
+        onReady={addComposedPhoto}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.light, padding: 16 },
-  obraBanner: { backgroundColor: COLORS.dark, borderRadius: 8, padding: 12 },
-  obraBannerText: { color: COLORS.white, fontSize: 13, fontWeight: "600" },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: COLORS.dark, marginTop: 16, marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, padding: 10, fontSize: 14, backgroundColor: COLORS.white, marginBottom: 8, color: COLORS.dark },
+  container: { flex: 1, backgroundColor: "#EEF1F3" },
+  content: { padding: 16 },
+  obraBanner: { backgroundColor: COLORS.dark, borderRadius: 4, padding: 18, borderLeftWidth: 5, borderLeftColor: COLORS.orange },
+  bannerEyebrow: { color: "#FF9B54", fontSize: 9, fontWeight: "900", letterSpacing: 1.6 },
+  obraBannerText: { color: COLORS.white, fontSize: 18, lineHeight: 23, fontWeight: "900", marginTop: 4 },
+  bannerHint: { color: "#AEB9C1", fontSize: 11, marginTop: 5 },
+  sectionTitle: { fontSize: 14, letterSpacing: 0.2, fontWeight: "900", color: COLORS.dark, marginTop: 22, marginBottom: 9 },
+  input: { borderWidth: 1, borderColor: "#D5DBE0", borderRadius: 4, minHeight: 46, padding: 12, fontSize: 14, backgroundColor: COLORS.white, marginBottom: 8, color: COLORS.dark },
   smallInput: { flex: 1, marginLeft: 6, maxWidth: 70 },
   climaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
-  climaBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: COLORS.white },
+  climaBtn: { minHeight: 42, justifyContent: "center", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 4, borderWidth: 1, borderColor: "#D5DBE0", backgroundColor: COLORS.white },
   climaBtnActive: { borderColor: COLORS.orange, backgroundColor: COLORS.orange + "10" },
   climaBtnText: { fontSize: 12, color: COLORS.gray },
   climaBtnTextActive: { color: COLORS.orange, fontWeight: "700" },
   itemRow: { flexDirection: "row", gap: 4, marginBottom: 4 },
-  addBtn: { color: COLORS.orange, fontSize: 13, fontWeight: "600", marginBottom: 8 },
+  addBtn: { color: "#C84E00", fontSize: 13, fontWeight: "800", paddingVertical: 8, marginBottom: 4 },
   fotoButtons: { flexDirection: "row", gap: 12, marginBottom: 12 },
-  fotoBtn: { flex: 1, backgroundColor: COLORS.white, borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, padding: 12, alignItems: "center" },
+  fotoBtn: { flex: 1, minHeight: 48, justifyContent: "center", backgroundColor: COLORS.white, borderWidth: 1, borderColor: "#CDD4DA", borderRadius: 4, padding: 12, alignItems: "center" },
   fotoBtnText: { fontSize: 14, color: COLORS.dark },
-  fotoItem: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.white, borderRadius: 8, padding: 8, marginBottom: 8 },
-  fotoThumb: { width: 48, height: 48, borderRadius: 6, backgroundColor: "#E5E7EB" },
+  fotoItem: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.white, borderRadius: 4, padding: 8, marginBottom: 8, borderWidth: 1, borderColor: "#E0E4E7" },
+  fotoThumb: { width: 62, height: 62, borderRadius: 2, backgroundColor: "#E5E7EB" },
   fotoRemove: { color: COLORS.danger, fontSize: 18, fontWeight: "700", padding: 6 },
-  saveButton: { backgroundColor: COLORS.orange, borderRadius: 10, padding: 16, alignItems: "center", marginTop: 24 },
+  saveButton: { backgroundColor: COLORS.orange, borderRadius: 4, minHeight: 56, justifyContent: "center", padding: 16, alignItems: "center", marginTop: 26 },
   saveButtonDisabled: { backgroundColor: COLORS.gray },
   saveButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

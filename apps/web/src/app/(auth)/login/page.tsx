@@ -1,6 +1,6 @@
 'use client';
-import { Suspense, useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { Suspense, useEffect, useState } from 'react';
+import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import Link from 'next/link';
@@ -16,12 +16,27 @@ function LoginForm() {
     process.env.NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP === 'true' || process.env.NODE_ENV !== 'production';
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const rawCallback = searchParams.get('callbackUrl');
+  const callbackUrl =
+    rawCallback && rawCallback !== '/' && !rawCallback.startsWith('/login')
+      ? rawCallback
+      : '/dashboard';
   const error = searchParams.get('error');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState('');
   const [showForgotInfo, setShowForgotInfo] = useState(false);
+
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      const dest =
+        (session.user as DynamicValue)?.role === 'MASTER_ADMIN' ? '/master' : callbackUrl;
+      router.replace(dest);
+    }
+  }, [status, session, router, callbackUrl]);
+
   const friendlyError = (e?: string | null) =>
     !e
       ? ''
@@ -29,7 +44,7 @@ function LoginForm() {
         ? 'Email ou senha incorretos'
         : e === 'AccessDenied'
           ? 'Acesso negado para esta conta'
-          : e;
+          : 'Não foi possível entrar agora. Verifique sua conexão e tente novamente.';
   const {
     register,
     handleSubmit,
@@ -38,18 +53,25 @@ function LoginForm() {
   async function onSubmit(data: LoginInput) {
     setIsLoading(true);
     setServerError('');
-    const result = await signIn('credentials', {
-      email: data.email,
-      password: data.password,
-      redirect: false,
-    });
-    if (result?.error) {
-      setServerError(result.error);
+    try {
+      const result = await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+      if (result?.error) {
+        console.error('[auth] Falha de autenticação');
+        setServerError(result.error);
+        return;
+      }
+      router.push(callbackUrl);
+      router.refresh();
+    } catch (authError) {
+      console.error('[auth] Falha inesperada no login', authError);
+      setServerError('Não foi possível entrar agora. Verifique sua conexão e tente novamente.');
+    } finally {
       setIsLoading(false);
-      return;
     }
-    router.push(callbackUrl);
-    router.refresh();
   }
   return (
     <div className="grid min-h-screen bg-slate-50 lg:grid-cols-[1.1fr_1fr]">
@@ -97,17 +119,17 @@ function LoginForm() {
             <h1 className="rigor-title text-3xl font-black leading-none text-slate-900 tracking-tight">
               Entrar no RIGOR
             </h1>
-            <p className="mt-2 text-xs font-semibold text-slate-450 uppercase tracking-wider">
+            <p className="mt-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Painel administrativo de controle de obras
             </p>
           </div>
           {(error || serverError) && (
-            <div className="mb-5 rounded-xl border border-red-200 bg-red-50/50 px-4 py-3 text-xs font-semibold text-red-700">
+            <div role="alert" aria-live="polite" className="mb-5 rounded-xl border border-red-200 bg-red-50/50 px-4 py-3 text-xs font-semibold text-red-700">
               {friendlyError(serverError || error)}
             </div>
           )}
           {showForgotInfo && (
-            <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50/50 px-4 py-3 text-xs font-semibold text-blue-800">
+            <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-blue-200 bg-blue-50/50 px-4 py-3 text-xs font-semibold text-blue-800">
               A redefinição de senha é feita pelo administrador do sistema. Solicite uma nova senha
               e depois altere-a em Configurações.
             </div>
@@ -145,7 +167,7 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowForgotInfo((v) => !v)}
-                  className="text-[11px] font-bold text-[#ff5a00] hover:text-[#ef5200] transition-colors"
+                  className="min-h-11 rounded-lg px-2 text-[11px] font-bold text-[#ff5a00] transition-colors hover:bg-orange-50 hover:text-[#ef5200]"
                 >
                   Esqueci minha senha
                 </button>
@@ -162,7 +184,8 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4.5 w-4.5" />
@@ -184,7 +207,7 @@ function LoginForm() {
             </Button>
           </form>
           <div className="mt-8 text-center">
-            <p className="text-[11px] font-medium text-slate-450 leading-relaxed">
+            <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
               {publicSignupEnabled ? (
                 <>
                   Ainda não usa o RIGOR?{' '}

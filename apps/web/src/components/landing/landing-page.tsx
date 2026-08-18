@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import {
   ArrowRight,
   BarChart3,
@@ -64,6 +65,10 @@ function formatMoney(value: number) {
 export function LandingPage() {
   const [billing, setBilling] = useState<BillingCycle>('annual');
   const [menuOpen, setMenuOpen] = useState(false);
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === 'authenticated';
+  const appHref =
+    (session?.user as DynamicValue)?.role === 'MASTER_ADMIN' ? '/master' : '/dashboard';
 
   return (
     <main className={styles.page}>
@@ -80,8 +85,16 @@ export function LandingPage() {
             <a href="#contato">Contato</a>
           </nav>
           <div className={styles.headerActions}>
-            <Link href="/login" className={styles.loginLink}>Entrar</Link>
-            <a href="#planos" className={styles.headerCta}>Conhecer planos <ArrowRight /></a>
+            {isAuthenticated ? (
+              <Link href={appHref} className={styles.headerCta}>
+                Acessar Painel <ArrowRight />
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className={styles.loginLink}>Entrar</Link>
+                <a href="#planos" className={styles.headerCta}>Conhecer planos <ArrowRight /></a>
+              </>
+            )}
           </div>
           <button
             type="button"
@@ -103,7 +116,11 @@ export function LandingPage() {
             ].map(([label, href]) => (
               <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}</a>
             ))}
-            <Link href="/login">Entrar na plataforma</Link>
+            {isAuthenticated ? (
+              <Link href={appHref}>Acessar Painel</Link>
+            ) : (
+              <Link href="/login">Entrar na plataforma</Link>
+            )}
           </nav>
         )}
       </header>
@@ -289,7 +306,7 @@ export function LandingPage() {
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <div><Link href="/" className={styles.logo}><span className={styles.logoMark}><HardHat /></span><span>RIGOR</span></Link><p>Gestão de obras com método, clareza e resultado.</p></div>
-          <div><strong>Produto</strong><a href="#plataforma">Plataforma</a><a href="#planos">Planos</a><Link href="/login">Entrar</Link></div>
+          <div><strong>Produto</strong><a href="#plataforma">Plataforma</a><a href="#planos">Planos</a>{isAuthenticated ? <Link href={appHref}>Acessar Painel</Link> : <Link href="/login">Entrar</Link>}</div>
           <div><strong>Legal</strong><Link href="/termos">Termos de Uso</Link><Link href="/privacidade">Privacidade e LGPD</Link><Link href="/cookies">Cookies</Link></div>
           <div><strong>Contato</strong><a href="mailto:comercial@rigorobras.com.br">comercial@rigorobras.com.br</a><span>Brasil</span></div>
         </div>

@@ -89,11 +89,6 @@ const roleRoutes: Record<string, string[]> = {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public routes
-  if (pathname === '/' || publicRoutes.some((route) => pathname.startsWith(route))) {
-    return NextResponse.next();
-  }
-
   // Allow static files and Next.js internals
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.includes('.')) {
     return NextResponse.next();
@@ -103,6 +98,32 @@ export async function proxy(request: NextRequest) {
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
   });
+
+  // If already authenticated and accessing login/register, redirect to app
+  if (token && (pathname === '/login' || pathname === '/register')) {
+    const userRole = token.role as string;
+    return NextResponse.redirect(
+      new URL(userRole === 'MASTER_ADMIN' ? '/master' : '/dashboard', request.url)
+    );
+  }
+
+  // Redirect /admin directly to /dashboard or login
+  if (pathname === '/admin') {
+    if (!token) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', '/dashboard');
+      return NextResponse.redirect(loginUrl);
+    }
+    const userRole = token.role as string;
+    return NextResponse.redirect(
+      new URL(userRole === 'MASTER_ADMIN' ? '/master' : '/dashboard', request.url)
+    );
+  }
+
+  // Allow public routes
+  if (pathname === '/' || publicRoutes.some((route) => pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
 
   // Redirect to login if not authenticated
   if (!token) {

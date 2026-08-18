@@ -8,17 +8,30 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { uploadFile } from '@/lib/upload-client';
+import { buildCrudPayload } from '@/lib/crud-form-payload';
+import { VoiceInputButton } from '@/components/voice-input-button';
 import {
+  Activity,
+  AlertTriangle,
+  Boxes,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  CircleDollarSign,
+  ClipboardCheck,
   Download,
   Edit3,
   Eye,
+  FileCheck2,
   FileUp,
+  HardHat,
   Loader2,
+  PackageCheck,
   Plus,
   Search,
+  ShieldCheck,
   Trash2,
+  UsersRound,
   X,
 } from 'lucide-react';
 
@@ -255,8 +268,8 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
 
   const listFields = useMemo(() => cfg.fields.filter((f) => f.list).slice(0, 8), [cfg]);
   const totals = useMemo(
-    () => computeTotals(rows, cfg.key, total, stats),
-    [rows, cfg.key, total, stats]
+    () => computeTotals(rows, cfg.key, total, stats, module),
+    [rows, cfg.key, total, stats, module]
   );
 
   async function load() {
@@ -302,23 +315,14 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
     setError('');
     try {
       const formData = new FormData(e.currentTarget);
-      const body: DynamicValue = { ...(current.filters || {}) };
-      for (const field of cfg.fields) {
-        if (field.type === 'file') {
-          const selected = formData.get(field.name);
-          if (selected instanceof File && selected.size > 0) {
-            body[field.name] = await uploadFile(
-              selected,
-              field.uploadCategory || cfg.key || 'geral'
-            );
-          } else if (field.required && !modal.row?.[field.name]) {
-            throw new Error(`Selecione o arquivo: ${field.label}`);
-          }
-          continue;
-        }
-        body[field.name] =
-          field.type === 'boolean' ? formData.get(field.name) === 'on' : formData.get(field.name);
-      }
+      const body = await buildCrudPayload({
+        fields: cfg.fields,
+        formData,
+        currentRow: modal.row,
+        defaults: current.filters || {},
+        upload: uploadFile,
+        fallbackCategory: cfg.key,
+      });
       const isEdit = modal.mode === 'edit' && Boolean(modal.row?.id);
       const res = await fetch(
         isEdit ? `/api/crud/${cfg.key}/${modal.row.id}` : `/api/crud/${cfg.key}`,
@@ -408,10 +412,13 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
             {moduleTitle(module, cfg.title)}
           </h1>
           <p className="mt-1.5 text-xs font-semibold text-slate-500">{cfg.subtitle}</p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <div className="pillow-tabs">
+          <div className="mt-5 w-full min-w-0 max-w-[calc(100vw-2rem)] overflow-x-auto pb-1 sm:max-w-full">
+            <div className="pillow-tabs w-max min-w-full" role="tablist" aria-label={`Seções de ${moduleTitle(module, cfg.title)}`}>
               {tabs.map((tab, i) => (
                 <button
+                  type="button"
+                  role="tab"
+                  aria-selected={i === activeTab}
                   key={`${tab.resource}-${tab.label}`}
                   onClick={() => {
                     setActiveTab(i);
@@ -457,6 +464,19 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
         </div>
       </div>
 
+      {specializedModules.has(module) && (
+        <OperationalOverview
+          module={module}
+          resource={cfg.key}
+          tabLabel={current.label}
+          rows={rows}
+          total={total}
+          stats={stats}
+          loading={loading}
+          onOpen={(row) => setModal({ mode: 'view', row })}
+        />
+      )}
+
       <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {totals.map((t) => (
           <div
@@ -470,7 +490,7 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
               className={cn(
                 'mt-1.5 text-2xl font-black leading-tight tracking-tight',
                 t.tone === 'danger'
-                  ? 'text-red-650'
+                  ? 'text-red-700'
                   : t.tone === 'success'
                     ? 'text-emerald-600'
                     : 'text-slate-800'
@@ -503,7 +523,7 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
                 setPage(1);
               }}
               aria-label="Limpar busca"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-450 hover:bg-slate-100 hover:text-[#17212b]"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-[#17212b]"
             >
               <X className="h-4 w-4" />
             </button>
@@ -532,7 +552,7 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
             <p className="font-bold text-slate-900">
               {search ? `Nenhum resultado para “${search}”` : 'Nenhum registro encontrado'}
             </p>
-            <p className="mt-1.5 text-[13px] text-slate-450 font-medium">
+            <p className="mt-1.5 text-[13px] text-slate-500 font-medium">
               {search
                 ? 'Ajuste a busca ou limpe o filtro para ver todos os registros.'
                 : `Clique em “${current.action || defaultAction[cfg.key] || 'Novo'}” para cadastrar.`}
@@ -602,7 +622,348 @@ function moduleTitle(module: string, fallback: string) {
   return map[module] || fallback;
 }
 
-function computeTotals(rows: DynamicValue[], key: string, total: number, stats: Stats | null) {
+const specializedModules = new Set([
+  'andamento',
+  'financeiro',
+  'materiais',
+  'equipe',
+  'documentos',
+  'qualidade',
+  'seguranca',
+]);
+
+const operationalCopy: Record<
+  string,
+  {
+    title: string;
+    description: string;
+    focus: string;
+    icon: typeof Activity;
+  }
+> = {
+  andamento: {
+    title: 'Sala de controle da execução',
+    description: 'Avanço físico, medições, evidências e impedimentos no mesmo fluxo.',
+    focus: 'Etapas que merecem acompanhamento',
+    icon: Activity,
+  },
+  financeiro: {
+    title: 'Controle financeiro da obra',
+    description: 'Receitas, despesas, aprovações e medições baseadas nos lançamentos reais.',
+    focus: 'Lançamentos que merecem conferência',
+    icon: CircleDollarSign,
+  },
+  materiais: {
+    title: 'Central de suprimentos',
+    description: 'Estoque, entradas, saídas, requisições e fornecedores em uma visão operacional.',
+    focus: 'Itens que merecem reposição ou análise',
+    icon: Boxes,
+  },
+  equipe: {
+    title: 'Gestão da força de trabalho',
+    description: 'Pessoas, presença, equipes, treinamentos e EPIs sem perder o vínculo com a obra.',
+    focus: 'Pessoas e registros que exigem atenção',
+    icon: UsersRound,
+  },
+  documentos: {
+    title: 'Controle documental',
+    description: 'Documentos, revisões, aprovações e arquivos organizados para auditoria.',
+    focus: 'Documentos para revisar',
+    icon: FileCheck2,
+  },
+  qualidade: {
+    title: 'Central de qualidade',
+    description: 'Inspeções, não conformidades, ensaios e evidências com rastreabilidade.',
+    focus: 'Registros que pedem tratamento',
+    icon: ClipboardCheck,
+  },
+  seguranca: {
+    title: 'Operação segura',
+    description: 'DDS, incidentes e treinamentos reunidos para prevenção no campo.',
+    focus: 'Ações preventivas prioritárias',
+    icon: ShieldCheck,
+  },
+};
+
+const attentionStatuses = new Set([
+  'ABERTO',
+  'ABERTA',
+  'ATRASADO',
+  'CRITICO',
+  'CRÍTICO',
+  'EM_TRATAMENTO',
+  'NAO_CONFORME',
+  'NÃO_CONFORME',
+  'PENDENTE',
+  'REPROVADO',
+  'VENCIDO',
+]);
+
+function normalizedStatus(row: DynamicValue) {
+  return String(row.status ?? row.resultado ?? row.situacao ?? '').toUpperCase();
+}
+
+function rowTitle(row: DynamicValue) {
+  const value =
+    row.nome ??
+    row.descricao ??
+    row.tema ??
+    row.titulo ??
+    row.codigo ??
+    row.numero ??
+    row.razaoSocial;
+  return value ? String(value) : 'Registro sem título';
+}
+
+function rowContext(row: DynamicValue) {
+  return String(
+    row.obra?.nome ??
+      row.fornecedor?.nomeFantasia ??
+      row.fornecedor?.razaoSocial ??
+      row.responsavel?.nome ??
+      row.categoria ??
+      (normalizedStatus(row) || 'Dados cadastrados')
+  ).replaceAll('_', ' ');
+}
+
+function realStatusCounts(rows: DynamicValue[], stats: Stats | null) {
+  if (stats && Object.keys(stats.statusCounts || {}).length > 0) return stats.statusCounts;
+  return rows.reduce<Record<string, number>>((counts, row) => {
+    const status = normalizedStatus(row);
+    if (status) counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function pageInsight(module: string, rows: DynamicValue[]) {
+  const currency = (value: number) =>
+    value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const numeric = (names: string[]) =>
+    rows
+      .map((row) => names.map((name) => Number(row[name])).find(Number.isFinite))
+      .filter((value): value is number => value !== undefined);
+
+  if (module === 'financeiro') {
+    const amounts = numeric(['valor', 'valorTotal', 'valorMedido']);
+    return {
+      label: 'Movimentação visível',
+      value: currency(amounts.reduce((sum, value) => sum + value, 0)),
+      hint: `Soma dos ${rows.length} registro(s) desta página`,
+      icon: CircleDollarSign,
+    };
+  }
+  if (module === 'andamento') {
+    const progress = numeric(['percentual', 'percentualConcluido', 'progresso', 'avanco']);
+    return {
+      label: 'Avanço médio visível',
+      value: progress.length
+        ? `${Math.round(progress.reduce((sum, value) => sum + value, 0) / progress.length)}%`
+        : 'Sem percentual',
+      hint: progress.length ? `Calculado em ${progress.length} etapa(s)` : 'Cadastre o avanço nas etapas',
+      icon: Activity,
+    };
+  }
+  if (module === 'materiais') {
+    const belowMinimum = rows.filter((row) => {
+      const current = Number(row.quantidadeAtual ?? row.estoqueAtual ?? row.quantidade);
+      const minimum = Number(row.estoqueMinimo ?? row.quantidadeMinima);
+      return Number.isFinite(current) && Number.isFinite(minimum) && current <= minimum;
+    }).length;
+    return {
+      label: 'Abaixo do mínimo',
+      value: String(belowMinimum),
+      hint: `Entre ${rows.length} item(ns) visíveis`,
+      icon: PackageCheck,
+    };
+  }
+  if (module === 'equipe') {
+    const present = rows.filter(
+      (row) => row.presente === true || ['PRESENTE', 'ATIVO'].includes(normalizedStatus(row))
+    ).length;
+    return {
+      label: 'Presenças/ativos visíveis',
+      value: String(present),
+      hint: `Entre ${rows.length} registro(s) desta página`,
+      icon: HardHat,
+    };
+  }
+  const positive = rows.filter((row) =>
+    ['APROVADO', 'CONFORME', 'CONCLUIDO', 'CONCLUÍDO', 'REALIZADO'].includes(normalizedStatus(row))
+  ).length;
+  return {
+    label:
+      module === 'documentos'
+        ? 'Aprovados visíveis'
+        : module === 'qualidade'
+          ? 'Conformes visíveis'
+          : 'Realizados/conformes',
+    value: String(positive),
+    hint: `Entre ${rows.length} registro(s) desta página`,
+    icon: CheckCircle2,
+  };
+}
+
+function OperationalOverview({
+  module,
+  resource,
+  tabLabel,
+  rows,
+  total,
+  stats,
+  loading,
+  onOpen,
+}: {
+  module: string;
+  resource: string;
+  tabLabel: string;
+  rows: DynamicValue[];
+  total: number;
+  stats: Stats | null;
+  loading: boolean;
+  onOpen: (row: DynamicValue) => void;
+}) {
+  const copy = operationalCopy[module];
+  if (!copy) return null;
+  const Icon = copy.icon;
+  const statusCounts = realStatusCounts(rows, stats);
+  const statuses = Object.entries(statusCounts)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const attention = rows.filter((row) => attentionStatuses.has(normalizedStatus(row))).slice(0, 3);
+  const candidates = attention.length > 0 ? attention : rows.slice(0, 3);
+  const insight = pageInsight(module, rows);
+  const InsightIcon = insight.icon;
+
+  return (
+    <section
+      aria-labelledby={`${module}-operational-title`}
+      className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white shadow-lg shadow-slate-200/50"
+    >
+      <div className="grid xl:grid-cols-[1.35fr_.8fr]">
+        <div className="relative overflow-hidden p-5 sm:p-6">
+          <div
+            aria-hidden="true"
+            className="absolute -right-12 -top-20 h-56 w-56 rounded-full bg-[#ff5a00]/20 blur-3xl"
+          />
+          <div className="relative flex items-start gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#ff5a00] shadow-lg shadow-orange-950/30">
+              <Icon className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-300">
+                {tabLabel} · dados em tempo real
+              </p>
+              <h2 id={`${module}-operational-title`} className="mt-1 text-xl font-black tracking-tight sm:text-2xl">
+                {copy.title}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-300">
+                {copy.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="relative mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {insight.label}
+              </p>
+              <div className="mt-2 flex items-center gap-3">
+                <InsightIcon className="h-5 w-5 text-orange-300" aria-hidden="true" />
+                <p className="text-xl font-black">{loading ? '—' : insight.value}</p>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">{insight.hint}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Distribuição por situação
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2" aria-label="Resumo por situação">
+                {statuses.length > 0 ? (
+                  statuses.map(([status, count]) => (
+                    <span
+                      key={status}
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-[11px] font-bold',
+                        attentionStatuses.has(status)
+                          ? 'border-amber-300/25 bg-amber-300/10 text-amber-200'
+                          : 'border-emerald-300/20 bg-emerald-300/10 text-emerald-200'
+                      )}
+                    >
+                      {status.replaceAll('_', ' ')} · {count}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">
+                    {loading ? 'Carregando situações…' : 'Nenhuma situação registrada neste filtro.'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10 bg-white/[0.045] p-5 sm:p-6 xl:border-l xl:border-t-0">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                Foco operacional
+              </p>
+              <h3 className="mt-1 text-sm font-bold">{copy.focus}</h3>
+            </div>
+            <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold text-slate-300">
+              {loading ? '…' : `${total} no filtro`}
+            </span>
+          </div>
+          <div className="mt-4 space-y-2">
+            {!loading && candidates.length > 0 ? (
+              candidates.map((row) => {
+                const status = normalizedStatus(row);
+                return (
+                  <button
+                    key={String(row.id)}
+                    type="button"
+                    onClick={() => onOpen(row)}
+                    className="group flex min-h-14 w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left transition hover:border-orange-300/30 hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff5a00]"
+                    aria-label={`Abrir ${rowTitle(row)}`}
+                  >
+                    {attentionStatuses.has(status) ? (
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold">{rowTitle(row)}</span>
+                      <span className="block truncate text-[11px] text-slate-400">{rowContext(row)}</span>
+                    </span>
+                    <Eye className="h-4 w-4 shrink-0 text-slate-500 transition group-hover:text-orange-300" aria-hidden="true" />
+                  </button>
+                );
+              })
+            ) : (
+              <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-white/15 px-4 text-center text-xs text-slate-400">
+                {loading
+                  ? 'Carregando prioridades reais…'
+                  : `Nenhum registro em ${tabLabel.toLowerCase()} para este filtro.`}
+              </div>
+            )}
+          </div>
+          <p className="mt-3 text-[10px] text-slate-500">
+            Fonte: {resource}. Clique em um item para ver o cadastro completo.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function computeTotals(
+  rows: DynamicValue[],
+  key: string,
+  total: number,
+  stats: Stats | null,
+  module?: string
+) {
   const money = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const countOf = (statuses: string[]) =>
     stats
@@ -611,7 +972,7 @@ function computeTotals(rows: DynamicValue[], key: string, total: number, stats: 
   const sum = stats
     ? stats.sum
     : rows.reduce((s, r) => s + Number(r.valor ?? r.valorTotal ?? r.precoMedio ?? 0), 0);
-  if (['financeiro', 'medicoes', 'contratos', 'orcamentos'].includes(key))
+  if (module === 'financeiro' || ['financeiro', 'medicoes', 'contratos', 'orcamentos'].includes(key))
     return [
       { label: 'Total', value: money(sum), hint: 'Soma dos registros', tone: 'orange' },
       {
@@ -635,16 +996,30 @@ function computeTotals(rows: DynamicValue[], key: string, total: number, stats: 
           r.isActive === true ||
           ['APROVADO', 'CONFORME', 'ENTREGUE'].includes(r.status || r.resultado)
       ).length;
+  const labels: Record<string, [string, string, string]> = {
+    andamento: ['Etapas monitoradas', 'No fluxo esperado', 'Desvios e pendências'],
+    materiais: ['Itens e movimentações', 'Disponíveis/entregues', 'Reposição necessária'],
+    equipe: ['Pessoas e alocações', 'Ativos/regularizados', 'Documentos ou EPIs pendentes'],
+    documentos: ['Arquivos controlados', 'Aprovados e vigentes', 'Revisão necessária'],
+    qualidade: ['Registros de qualidade', 'Conformes/aprovados', 'Não conformidades abertas'],
+    seguranca: ['Registros de segurança', 'Conformes/realizados', 'Ações preventivas abertas'],
+  };
+  const copy = labels[module || ''] || ['Registros', 'Ativos/Aprovados', 'Pendências'];
   return [
-    { label: 'Registros', value: String(total), hint: 'Itens cadastrados', tone: 'orange' },
-    { label: 'Ativos/Aprovados', value: String(ativos), hint: 'Em conformidade', tone: 'success' },
+    { label: copy[0], value: String(total), hint: 'Total no filtro atual', tone: 'orange' },
+    { label: copy[1], value: String(ativos), hint: 'Situação registrada', tone: 'success' },
     {
-      label: 'Pendências',
+      label: copy[2],
       value: String(countOf(['PENDENTE', 'ABERTA', 'NAO_CONFORME', 'VENCIDO'])),
       hint: 'Requer atenção',
       tone: 'danger',
     },
-    { label: 'Atualizado', value: 'Agora', hint: 'Dados do banco', tone: 'orange' },
+    {
+      label: 'Nesta página',
+      value: String(rows.length),
+      hint: total > rows.length ? `de ${total} registros filtrados` : 'Todos os registros filtrados',
+      tone: 'orange',
+    },
   ];
 }
 
@@ -760,7 +1135,7 @@ function DataTable({
               {fields.map((f) => (
                 <td
                   key={f.name}
-                  className="max-w-[240px] truncate px-3 py-4 text-slate-655 font-medium"
+                  className="max-w-[240px] truncate px-3 py-4 text-slate-600 font-medium"
                 >
                   {f.name === 'status' || f.name === 'resultado' ? (
                     <StatusPill value={fmtValue(row, f)} />
@@ -787,7 +1162,7 @@ function DataTable({
                 <button
                   title="Excluir"
                   onClick={() => onDelete(row)}
-                  className="rounded-lg p-2 text-red-650 hover:bg-red-50 transition-colors cursor-pointer"
+                  className="rounded-lg p-2 text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4 stroke-[2]" />
                 </button>
@@ -899,7 +1274,7 @@ function PremiumModal({
             ))}
           </div>
           <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-7 py-4">
-            <p className="text-xs font-semibold text-slate-450">
+            <p className="text-xs font-semibold text-slate-500">
               {readOnly
                 ? 'Modo somente visualização de registros.'
                 : 'Campos com asterisco (*) são de preenchimento obrigatório.'}
@@ -966,6 +1341,7 @@ function Field({
   options: Options;
   readOnly: boolean;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const relOpts = field.relation ? options[field.relation] || [] : [];
   const cls =
     'h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-[13px] text-slate-800 outline-none focus:border-[#ff5a00] focus:ring-4 focus:ring-[#ff5a00]/10 disabled:bg-slate-50/50 disabled:text-slate-500 transition-all duration-200';
@@ -978,38 +1354,75 @@ function Field({
       {field.type === 'file' ? (
         <div className="space-y-2">
           {!readOnly && (
-            <input
-              name={field.name}
-              type="file"
-              accept={field.accept}
-              required={field.required && !value}
-              className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white text-[13px] text-slate-600 file:mr-3 file:border-0 file:border-r file:border-slate-200 file:bg-slate-50 file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-slate-700 hover:file:bg-orange-50 hover:file:text-[#ff5a00] focus:outline-none focus:ring-4 focus:ring-[#ff5a00]/10"
-            />
+            <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 p-3 transition hover:border-orange-300 hover:bg-orange-50/40 focus-within:border-[#ff5a00] focus-within:ring-4 focus-within:ring-orange-100">
+              <div className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-700">
+                <FileUp className="h-4 w-4 text-[#ff5a00]" />
+                Solte aqui ou escolha no dispositivo
+              </div>
+              <input
+                name={field.name}
+                type="file"
+                accept={field.accept}
+                capture={field.accept?.includes('image/') ? 'environment' : undefined}
+                required={field.required && !value}
+                className="block w-full cursor-pointer rounded-lg border border-slate-200 bg-white text-[12px] text-slate-600 file:mr-3 file:border-0 file:border-r file:border-slate-200 file:bg-white file:px-4 file:py-2.5 file:text-xs file:font-bold file:text-slate-700 hover:file:bg-orange-50 hover:file:text-[#ff5a00] focus:outline-none"
+              />
+              <p className="mt-2 text-[10.5px] font-medium text-slate-400">
+                Upload seguro • imagens, documentos e planilhas • máximo de 10 MB
+              </p>
+            </div>
           )}
           {value ? (
-            <a
-              href={String(value)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 text-xs font-bold text-[#d94c09] hover:underline"
-            >
-              <Download className="h-3.5 w-3.5" />
-              {readOnly ? 'Abrir arquivo' : 'Abrir arquivo atual'}
-            </a>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <a
+                href={String(value)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-10 items-center gap-2 text-xs font-bold text-[#d94c09] hover:underline"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {readOnly ? 'Abrir arquivo' : 'Abrir arquivo atual'}
+              </a>
+              <a
+                href={String(value)}
+                download
+                className="inline-flex min-h-10 items-center gap-2 text-xs font-bold text-slate-600 hover:text-[#d94c09] hover:underline"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Baixar arquivo
+              </a>
+            </div>
           ) : readOnly ? (
             <span className="text-xs font-medium text-slate-400">Nenhum arquivo enviado</span>
-          ) : (
-            <p className="text-[11px] font-medium text-slate-400">Máximo de 10 MB</p>
-          )}
+          ) : null}
         </div>
       ) : field.type === 'textarea' ? (
-        <textarea
-          disabled={readOnly}
-          name={field.name}
-          defaultValue={value || ''}
-          required={field.required}
-          className="min-h-[96px] w-full rounded-lg border border-slate-200 p-3 text-[13px] text-slate-800 outline-none focus:border-[#ff5a00] focus:ring-4 focus:ring-[#ff5a00]/10 disabled:bg-slate-50/50 disabled:text-slate-500 transition-all duration-200"
-        />
+        <div className="space-y-2">
+          <textarea
+            ref={textareaRef}
+            disabled={readOnly}
+            name={field.name}
+            defaultValue={value || ''}
+            required={field.required}
+            className="min-h-[112px] w-full resize-y rounded-lg border border-slate-200 p-3 text-[13px] leading-relaxed text-slate-800 outline-none focus:border-[#ff5a00] focus:ring-4 focus:ring-[#ff5a00]/10 disabled:bg-slate-50/50 disabled:text-slate-500 transition-all duration-200"
+          />
+          {!readOnly && (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10.5px] font-medium text-slate-400">
+                Digite normalmente ou registre em campo usando a voz.
+              </p>
+              <VoiceInputButton
+                onTranscript={(text) => {
+                  const textarea = textareaRef.current;
+                  if (!textarea) return;
+                  textarea.value = `${textarea.value}${textarea.value ? ' ' : ''}${text}`;
+                  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                }}
+                label={`Ditar ${field.label.toLowerCase()}`}
+              />
+            </div>
+          )}
+        </div>
       ) : field.type === 'select' ? (
         <select
           disabled={readOnly}
@@ -1037,7 +1450,7 @@ function Field({
             name={field.name}
             type="checkbox"
             defaultChecked={Boolean(value)}
-            className="h-5 w-5 rounded border-slate-350 text-[#ff5a00] focus:ring-[#ff5a00]/20 cursor-pointer"
+            className="h-5 w-5 rounded border-slate-300 text-[#ff5a00] focus:ring-[#ff5a00]/20 cursor-pointer"
           />
         </div>
       ) : (

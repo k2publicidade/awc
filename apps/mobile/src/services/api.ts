@@ -1,4 +1,5 @@
 import axios from "axios";
+import * as FileSystem from "expo-file-system";
 import { getApiUrl } from "./config";
 
 /**
@@ -105,9 +106,37 @@ export const qualidadeApi = {
 
 export const galeriaApi = {
   list: (obraId: string) => api.get(`/galeria?obraId=${obraId}`),
-  /** Envia foto como data URL (base64) no campo url. */
-  upload: (data: { obraId: string; url: string; legenda?: string; etapaId?: string | null; rdoId?: string | null }) =>
-    api.post("/galeria", data),
+  /**
+   * Persiste o arquivo antes de criar o registro da galeria. Também converte
+   * data URLs legadas que ainda possam existir na fila offline.
+   */
+  uploadPhoto: async (
+    localUri: string,
+    data: { obraId: string; legenda?: string; etapaId?: string | null; rdoId?: string | null }
+  ) => {
+    let uploadUri = localUri;
+    let temporaryUri: string | null = null;
+    if (localUri.startsWith("data:")) {
+      const base64 = localUri.split(",")[1];
+      if (!base64) throw new Error("Imagem offline inválida");
+      temporaryUri = `${FileSystem.cacheDirectory}rigor-${Date.now()}.jpg`;
+      await FileSystem.writeAsStringAsync(temporaryUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+      uploadUri = temporaryUri;
+    }
+
+    try {
+      const form = new FormData();
+      form.append("file", { uri: uploadUri, name: `campo-${Date.now()}.jpg`, type: "image/jpeg" } as any);
+      form.append("category", "galeria");
+      const uploaded = await api.post("/uploads", form, {
+        timeout: 60000,
+      });
+      if (!uploaded.data?.url) throw new Error("O servidor não retornou a URL da foto");
+      return api.post("/galeria", { ...data, url: uploaded.data.url });
+    } finally {
+      if (temporaryUri) await FileSystem.deleteAsync(temporaryUri, { idempotent: true }).catch(() => {});
+    }
+  },
 };
 
 export const notificacoesApi = {

@@ -11,16 +11,22 @@ import { COLORS } from "../services/config";
 import { ObraBanner, EmptyState, ErrorBanner } from "../components/ui";
 import { Foto } from "../types";
 import { genId } from "../lib/id";
+import { useAuthStore } from "../store/authStore";
+import { FieldPhotoComposer, ComposedFieldPhoto } from "../components/FieldPhotoComposer";
+import { persistOfflinePhoto } from "../services/photos";
+import { resolveApiAssetUrl } from "../services/config";
 
 export function GaleriaScreen() {
   const obra = useObraStore((s) => s.obra);
   const setPending = useSyncStore((s) => s.setPending);
+  const user = useAuthStore((s) => s.user);
   const [fotos, setFotos] = useState<Foto[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [lightbox, setLightbox] = useState<Foto | null>(null);
+  const [photoQueue, setPhotoQueue] = useState<ImagePicker.ImagePickerAsset[]>([]);
 
   const fetchFotos = useCallback(async () => {
     if (!obra) { setLoading(false); return; }
@@ -38,27 +44,25 @@ export function GaleriaScreen() {
 
   useFocusEffect(useCallback(() => { fetchFotos(); }, [fetchFotos]));
 
-  const enviarFoto = async (result: ImagePicker.ImagePickerResult) => {
+  const queueResult = (result: ImagePicker.ImagePickerResult) => {
     if (!obra || result.canceled) return;
-    const assets = result.assets.filter((a) => a.base64);
-    if (assets.length === 0) return;
+    setPhotoQueue((current) => [...current, ...result.assets]);
+  };
+
+  const enviarFoto = async (photo: ComposedFieldPhoto) => {
+    if (!obra) return;
     setUploading(true);
     try {
       const isConnected = await checkConnectivity();
-      let offline = 0;
-      for (const a of assets) {
-        const dataUrl = `data:image/jpeg;base64,${a.base64}`;
-        if (isConnected) {
-          await galeriaApi.upload({ obraId: obra.id, url: dataUrl, legenda: "" });
-        } else {
-          await saveFotoOffline(genId(), obra.id, dataUrl, "");
-          offline++;
-        }
-      }
-      if (offline > 0) {
+      if (isConnected) {
+        await galeriaApi.uploadPhoto(photo.uri, { obraId: obra.id, legenda: photo.legenda });
+      } else {
+        const durableUri = await persistOfflinePhoto(photo.uri);
+        await saveFotoOffline(genId(), obra.id, durableUri, photo.legenda);
         setPending(await getPendingCount());
-        Alert.alert("Salvo offline", `${offline} foto(s) serão enviadas quando houver conexão.`);
+        Alert.alert("Foto protegida", "O arquivo ficou salvo neste aparelho e será enviado quando a conexão voltar.");
       }
+      setPhotoQueue((current) => current.slice(1));
       await fetchFotos();
     } catch (e: any) {
       Alert.alert("Erro", e.response?.data?.error || "Não foi possível enviar a foto");
@@ -70,13 +74,13 @@ export function GaleriaScreen() {
   const tirarFoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) { Alert.alert("Permissão", "Autorize o uso da câmera nas configurações."); return; }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.5, base64: true });
-    await enviarFoto(result);
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.82 });
+    queueResult(result);
   };
 
   const escolherDaGaleria = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.5, base64: true, allowsMultipleSelection: true, selectionLimit: 5 });
-    await enviarFoto(result);
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.82, allowsMultipleSelection: true, selectionLimit: 5 });
+    queueResult(result);
   };
 
   return (
@@ -84,12 +88,18 @@ export function GaleriaScreen() {
       <ObraBanner obra={obra} />
       <ErrorBanner message={error} />
 
+      <View style={styles.intro}>
+        <Text style={styles.kicker}>DIÁRIO VISUAL</Text>
+        <Text style={styles.heading}>Evolução em campo</Text>
+        <Text style={styles.subheading}>Fotos identificadas com obra, responsável, horário e localização.</Text>
+      </View>
+
       <View style={styles.actions}>
         <TouchableOpacity style={[styles.actionBtn, (!obra || uploading) && styles.actionBtnDisabled]} onPress={tirarFoto} disabled={!obra || uploading}>
-          {uploading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.actionBtnText}>📷 Câmera</Text>}
+          {uploading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.actionBtnText}>＋ Registrar agora</Text>}
         </TouchableOpacity>
         <TouchableOpacity style={[styles.actionBtn, styles.actionBtnOutline, (!obra || uploading) && styles.actionBtnDisabled]} onPress={escolherDaGaleria} disabled={!obra || uploading}>
-          <Text style={[styles.actionBtnText, styles.actionBtnOutlineText]}>🖼️ Galeria</Text>
+          <Text style={[styles.actionBtnText, styles.actionBtnOutlineText]}>Escolher arquivo</Text>
         </TouchableOpacity>
       </View>
 
@@ -105,7 +115,7 @@ export function GaleriaScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchFotos(); }} colors={[COLORS.orange]} />}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.fotoCard} onPress={() => setLightbox(item)}>
-              <Image source={{ uri: item.url }} style={styles.fotoImg} resizeMode="cover" />
+              <Image source={{ uri: resolveApiAssetUrl(item.url) }} style={styles.fotoImg} resizeMode="cover" />
               {item.legenda ? <Text style={styles.fotoLegenda} numberOfLines={1}>{item.legenda}</Text> : null}
             </TouchableOpacity>
           )}
@@ -118,7 +128,7 @@ export function GaleriaScreen() {
         <TouchableOpacity style={styles.lightbox} activeOpacity={1} onPress={() => setLightbox(null)}>
           {lightbox && (
             <View style={styles.lightboxContent}>
-              <Image source={{ uri: lightbox.url }} style={styles.lightboxImg} resizeMode="contain" />
+              <Image source={{ uri: resolveApiAssetUrl(lightbox.url) }} style={styles.lightboxImg} resizeMode="contain" />
               <Text style={styles.lightboxLegenda}>{lightbox.legenda || "Sem legenda"}</Text>
               <Text style={styles.lightboxData}>
                 {new Date(lightbox.data).toLocaleDateString("pt-BR")}{lightbox.etapa ? ` · ${lightbox.etapa.nome}` : ""}
@@ -130,21 +140,32 @@ export function GaleriaScreen() {
           )}
         </TouchableOpacity>
       </Modal>
+      <FieldPhotoComposer
+        asset={photoQueue[0] || null}
+        obra={obra}
+        responsavel={user?.name || "Responsável de campo"}
+        onCancel={() => setPhotoQueue((current) => current.slice(1))}
+        onReady={enviarFoto}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.light },
-  actions: { flexDirection: "row", gap: 10, padding: 16, paddingBottom: 8 },
-  actionBtn: { flex: 1, backgroundColor: COLORS.orange, borderRadius: 10, padding: 13, alignItems: "center" },
-  actionBtnOutline: { backgroundColor: COLORS.white, borderWidth: 1, borderColor: "#E5E7EB" },
+  intro: { paddingHorizontal: 18, paddingTop: 18 },
+  kicker: { color: COLORS.orange, fontSize: 10, fontWeight: "900", letterSpacing: 1.8 },
+  heading: { color: COLORS.dark, fontSize: 25, lineHeight: 30, fontWeight: "900", marginTop: 3 },
+  subheading: { color: COLORS.gray, fontSize: 12, lineHeight: 17, marginTop: 3 },
+  actions: { flexDirection: "row", gap: 10, padding: 18, paddingTop: 14, paddingBottom: 8 },
+  actionBtn: { flex: 1.25, backgroundColor: COLORS.orange, borderRadius: 4, minHeight: 48, justifyContent: "center", alignItems: "center" },
+  actionBtnOutline: { flex: 1, backgroundColor: COLORS.white, borderWidth: 1, borderColor: "#CDD4DA" },
   actionBtnDisabled: { opacity: 0.5 },
   actionBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
   actionBtnOutlineText: { color: COLORS.dark },
-  grid: { padding: 14, paddingTop: 8, flexGrow: 1 },
-  fotoCard: { width: "33.33%", aspectRatio: 1, padding: 2 },
-  fotoImg: { flex: 1, borderRadius: 6, backgroundColor: "#E5E7EB" },
+  grid: { padding: 16, paddingTop: 8, flexGrow: 1 },
+  fotoCard: { width: "33.33%", aspectRatio: 0.86, padding: 3 },
+  fotoImg: { flex: 1, borderRadius: 3, backgroundColor: "#E5E7EB" },
   fotoLegenda: { fontSize: 9, color: COLORS.gray, textAlign: "center", padding: 2 },
   lightbox: { flex: 1, backgroundColor: "rgba(0,0,0,0.9)", justifyContent: "center", padding: 16 },
   lightboxContent: { alignItems: "center" },
