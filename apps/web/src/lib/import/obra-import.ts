@@ -10,6 +10,7 @@ import type {
   ImportedObra,
   ObraImportPreview,
 } from '@/types/obra-import';
+import { parseMppBuffer, parseMppXml } from './mpp-parser';
 
 type CellValue = unknown;
 type FieldName = keyof ImportedObra;
@@ -408,7 +409,6 @@ function runPythonScript(scriptName: string, inputFilePath: string, outputJsonPa
   const pythonBin = findPythonBinary();
   return new Promise((resolve, reject) => {
     execFile(pythonBin, [scriptPath, inputFilePath, outputJsonPath], { timeout: 35000 }, (error, stdout, stderr) => {
-      // Se o arquivo de saída foi gerado com sucesso pelo script python, considera sucesso
       if (fs.existsSync(outputJsonPath) && fs.statSync(outputJsonPath).size > 10) {
         return resolve(stdout || 'OK');
       }
@@ -422,113 +422,35 @@ function runPythonScript(scriptName: string, inputFilePath: string, outputJsonPa
 }
 
 /**
- * Fallback estrito em TypeScript puro para extrair tarefas de arquivos .mpp
- * apenas quando o parser oficial MPXJ não estiver acessível.
- * Ignora todos os artefatos de sistema OLE, caminhos e metadados internos.
- */
-function parseMppFallback(input: { name: string; size: number; buffer: Buffer }): ObraImportPreview {
-  const buf = input.buffer;
-  const rawStrings: string[] = [];
-
-  let current: string[] = [];
-  for (let i = 0; i < buf.length - 1; i += 2) {
-    const code = buf.readUInt16LE(i);
-    if ((code >= 32 && code <= 126) || (code >= 192 && code <= 382)) {
-      current.push(String.fromCharCode(code));
-    } else {
-      if (current.length >= 3) {
-        rawStrings.push(current.join('').trim());
-      }
-      current = [];
-    }
-  }
-  if (current.length >= 3) rawStrings.push(current.join('').trim());
-
-  // Lista estrita de exclusão de cabeçalhos e fluxos internos do Microsoft OLE/CFB
-  const isSystemArtifact = (s: string) => {
-    const lower = s.toLowerCase();
-    return (
-      lower.startsWith('root') ||
-      lower.startsWith('compobj') ||
-      lower.startsWith('summary') ||
-      lower.startsWith('documentsummary') ||
-      lower.startsWith('props') ||
-      lower.startsWith('cv_') ||
-      lower.includes('thinkpad') ||
-      lower.includes('onedrive') ||
-      lower.includes('users\\') ||
-      lower.includes('c:\\') ||
-      lower.includes('d:\\') ||
-      lower.includes('.dll') ||
-      lower.includes('.exe') ||
-      lower.includes('.tmp') ||
-      lower.startsWith('{') ||
-      lower.includes('calibri') ||
-      lower.includes('arial') ||
-      lower.includes('tahoma') ||
-      lower.includes('ms shell dlg') ||
-      lower.includes('standard') ||
-      lower.includes('table') ||
-      lower.includes('view') ||
-      lower.includes('gantt') ||
-      lower === 'project' ||
-      /^[0-9\-_./\\,]+$/.test(s)
-    );
-  };
-
-  const taskCandidates = rawStrings
-    .map((s) => s.trim())
-    .filter((s) => s.length >= 4 && s.length <= 100)
-    .filter((s) => !isSystemArtifact(s))
-    .filter((s) => /[a-zA-ZÀ-ÿ]/.test(s));
-
-  const uniqueTasks: string[] = [];
-  for (const t of taskCandidates) {
-    if (!uniqueTasks.includes(t)) uniqueTasks.push(t);
-  }
-
-  const baseName = path.parse(input.name).name.replace(/[-_]/g, ' ').trim();
-  const obra = emptyObra();
-  const detected = new Set<FieldName>();
-
-  obra.nome = baseName || 'Obra MS Project';
-  detected.add('nome');
-
-  obra.codigo = generateObraCode(obra.nome, 'PRJ');
-  detected.add('codigo');
-
-  obra.descricao = `Cronograma importado do Microsoft Project (${input.name}).`;
-  detected.add('descricao');
-
-  const etapas: ImportedEtapa[] = uniqueTasks.slice(0, MAX_ETAPAS).map((taskName, idx) => ({
-    nome: taskName,
-    descricao: '',
-    dataInicio: '',
-    dataFim: '',
-    percentualPrevisto: 0,
-    percentualRealizado: 0,
-    valorFinanceiro: 0,
-    ordem: idx + 1,
-  }));
-
-  return finalizePreview({
-    name: input.name,
-    size: input.size,
-    obra,
-    detected,
-    etapas,
-    extraWarnings: [
-      `Arquivo MS Project processado: ${etapas.length} etapas identificadas.`,
-    ],
-  });
-}
-
-/**
  * Extrator e interpretador de arquivos do Microsoft Project (.mpp e .xml)
+ * Suporta execução nativa em TypeScript (PROD/Vercel/Netlify) e enriquecimento via MPXJ quando disponível.
  */
 async function parseMppOrXml(input: { name: string; size: number; buffer: Buffer }): Promise<ObraImportPreview> {
+  const ext = path.extname(input.name).toLowerCase();
+
+  // Se for XML do MS Project
+  if (ext === '.xml') {
+    const xmlResult = parseMppXml(input.buffer.toString('utf8'), input.name);
+    const detected = new Set<FieldName>();
+    if (xmlResult.obra.nome) detected.add('nome');
+    if (xmlResult.obra.codigo) detected.add('codigo');
+    if (xmlResult.obra.tipo !== 'OUTRO') detected.add('tipo');
+    if (xmlResult.obra.dataInicio) detected.add('dataInicio');
+    if (xmlResult.obra.dataPrevisaoFim) detected.add('dataPrevisaoFim');
+    if (xmlResult.obra.valorContratado > 0) detected.add('valorContratado');
+
+    return finalizePreview({
+      name: input.name,
+      size: input.size,
+      obra: xmlResult.obra,
+      detected,
+      etapas: xmlResult.etapas,
+      extraWarnings: xmlResult.warnings,
+    });
+  }
+
+  // Tentar primeiro extrair via Python MPXJ se disponível no servidor local
   const tmpDir = os.tmpdir();
-  const ext = path.extname(input.name).toLowerCase() || '.mpp';
   const tmpInput = path.join(tmpDir, `mpp_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`);
   const tmpOutput = path.join(tmpDir, `mpp_${Date.now()}_${Math.random().toString(36).slice(2)}.json`);
 
@@ -625,13 +547,28 @@ async function parseMppOrXml(input: { name: string; size: number; buffer: Buffer
       });
     }
   } catch (pyErr) {
-    console.warn('[import] Falha na execução Python MPXJ, utilizando parser alternativo:', pyErr);
+    // Ambiente de produção sem Python (Netlify/Vercel) -> Executar parser nativo em TypeScript puro
+    console.warn('[import] Executando parser nativo TypeScript puro para Microsoft Project:', pyErr);
   } finally {
     try { if (fs.existsSync(tmpInput)) fs.unlinkSync(tmpInput); } catch {}
     try { if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput); } catch {}
   }
 
-  return parseMppFallback(input);
+  // Parser nativo TypeScript puro de alto desempenho para PRODUÇÃO
+  const nativeResult = parseMppBuffer(input.buffer, input.name);
+  const detected = new Set<FieldName>();
+  if (nativeResult.obra.nome) detected.add('nome');
+  if (nativeResult.obra.codigo) detected.add('codigo');
+  if (nativeResult.obra.tipo !== 'OUTRO') detected.add('tipo');
+
+  return finalizePreview({
+    name: input.name,
+    size: input.size,
+    obra: nativeResult.obra,
+    detected,
+    etapas: nativeResult.etapas,
+    extraWarnings: nativeResult.warnings,
+  });
 }
 
 /**
@@ -660,6 +597,7 @@ function parsePdfFallback(input: { name: string; size: number; buffer: Buffer })
     }
   }
 
+  const fullText = textBlocks.join('\n');
   const baseName = path.parse(input.name).name.replace(/[-_]/g, ' ').trim();
   const obra = emptyObra();
   const detected = new Set<FieldName>();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireSession } from '@/lib/session-context';
 import { assertTenantRelations } from '@/lib/authorization';
+import { deleteObraCascade } from '@/lib/cascade-delete';
 
 /** GET /api/obras/[id] */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -65,16 +66,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   });
   if (!existing) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
 
-  try {
-    await prisma.obra.delete({ where: { id } });
-    return NextResponse.json({ ok: true, deleted: true });
-  } catch {
-    // Se possui dependências relacionais que impedem o hard delete, arquiva / cancela
-    const archived = await prisma.obra.update({
-      where: { id },
-      data: { status: 'CANCELADO' },
-    });
-    return NextResponse.json({ ok: true, archived: true, obra: archived });
-  }
+  await deleteObraCascade(id, context.tenantId);
+  return NextResponse.json({ ok: true, deleted: true });
 }
 

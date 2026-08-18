@@ -9,6 +9,16 @@ import {
   tenantOwnsResource,
 } from '@/lib/authorization';
 import { isManagedUploadUrl } from '@/lib/storage';
+import {
+  deleteContratoCascade,
+  deleteEquipeCascade,
+  deleteEtapaCascade,
+  deleteInspecaoCascade,
+  deleteMedicaoCascade,
+  deleteObraCascade,
+  deleteOrcamentoCascade,
+  deleteRdoCascade,
+} from '@/lib/cascade-delete';
 
 const prismaAny = prisma as DynamicValue;
 
@@ -123,17 +133,45 @@ export async function DELETE(
       resource, cfg.model, id, ctx.tenantId, ctx.userId, ctx.role
     );
     if (!owned) return NextResponse.json({ error: 'Registro não encontrado' }, { status: 404 });
+
+    // Exclusões com relacionamentos em cascata atômica
+    if (resource === 'obras') {
+      await deleteObraCascade(id, ctx.tenantId);
+      return NextResponse.json({ ok: true, deleted: true });
+    }
+    if (resource === 'etapas') {
+      await deleteEtapaCascade(id);
+      return NextResponse.json({ ok: true, deleted: true });
+    }
+    if (resource === 'rdos') {
+      await deleteRdoCascade(id);
+      return NextResponse.json({ ok: true, deleted: true });
+    }
+    if (resource === 'orcamentos') {
+      await deleteOrcamentoCascade(id);
+      return NextResponse.json({ ok: true, deleted: true });
+    }
+    if (resource === 'medicoes') {
+      await deleteMedicaoCascade(id);
+      return NextResponse.json({ ok: true, deleted: true });
+    }
+    if (resource === 'inspecoes') {
+      await deleteInspecaoCascade(id);
+      return NextResponse.json({ ok: true, deleted: true });
+    }
+    if (resource === 'contratos') {
+      await deleteContratoCascade(id);
+      return NextResponse.json({ ok: true, deleted: true });
+    }
+    if (resource === 'equipes') {
+      await deleteEquipeCascade(id);
+      return NextResponse.json({ ok: true, deleted: true });
+    }
+
     try {
       await delegate(cfg.model).delete({ where: { id } });
       return NextResponse.json({ ok: true, deleted: true });
     } catch (e) {
-      if (resource === 'obras') {
-        const row = await delegate(cfg.model).update({
-          where: { id },
-          data: { status: 'CANCELADO' },
-        });
-        return NextResponse.json({ ok: true, archived: true, row: serialize(row) });
-      }
       if (resource === 'equipe' || resource === 'fornecedores') {
         const row = await delegate(cfg.model).update({ where: { id }, data: { isActive: false } });
         return NextResponse.json({ ok: true, archived: true, row: serialize(row) });
