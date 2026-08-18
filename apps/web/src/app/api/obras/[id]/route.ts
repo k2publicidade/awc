@@ -65,6 +65,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   });
   if (!existing) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
 
-  await prisma.obra.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.obra.delete({ where: { id } });
+    return NextResponse.json({ ok: true, deleted: true });
+  } catch {
+    // Se possui dependências relacionais que impedem o hard delete, arquiva / cancela
+    const archived = await prisma.obra.update({
+      where: { id },
+      data: { status: 'CANCELADO' },
+    });
+    return NextResponse.json({ ok: true, archived: true, obra: archived });
+  }
 }
+

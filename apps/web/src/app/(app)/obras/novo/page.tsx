@@ -1,5 +1,11 @@
-import { CrudModule } from '@/components/crud-module';
+import { NovaObraForm } from '@/components/obras/nova-obra-form';
 
-export default function Page() {
-  return <CrudModule module="obras" />;
+export const metadata = {
+  title: 'Nova Obra — RIGOR',
+  description: 'Cadastro de novo empreendimento e configuração inicial de cronograma',
+};
+
+export default function NovaObraPage() {
+  return <NovaObraForm />;
 }
+

@@ -1137,8 +1137,14 @@ function DataTable({
                   key={f.name}
                   className="max-w-[240px] truncate px-3 py-4 text-slate-600 font-medium"
                 >
-                  {f.name === 'status' || f.name === 'resultado' ? (
+                  {f.name === 'status' || f.name === 'resultado' || f.name === 'situacao' ? (
                     <StatusPill value={fmtValue(row, f)} />
+                  ) : f.type === 'boolean' ? (
+                    <BooleanPill value={Boolean(row[f.name])} label={f.name === 'isActive' ? (row[f.name] ? 'Ativo' : 'Inativo') : fmtValue(row, f)} />
+                  ) : f.type === 'currency' ? (
+                    <span className="font-mono font-bold text-slate-900">{fmtValue(row, f)}</span>
+                  ) : f.name === 'nome' || f.name === 'codigo' ? (
+                    <span className="font-bold text-slate-900">{fmtValue(row, f)}</span>
                   ) : (
                     fmtValue(row, f)
                   )}
@@ -1148,21 +1154,21 @@ function DataTable({
                 <button
                   title="Ver detalhes"
                   onClick={() => onView(row)}
-                  className="mr-1.5 rounded-lg p-2 text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="mr-1.5 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
                 >
                   <Eye className="h-4 w-4 stroke-[2]" />
                 </button>
                 <button
                   title="Editar"
                   onClick={() => onEdit(row)}
-                  className="mr-1.5 rounded-lg p-2 text-[#ff5a00] hover:bg-orange-50 transition-colors cursor-pointer"
+                  className="mr-1.5 rounded-lg p-2 text-[#ff4d00] hover:bg-orange-50 transition-colors cursor-pointer"
                 >
                   <Edit3 className="h-4 w-4 stroke-[2]" />
                 </button>
                 <button
                   title="Excluir"
                   onClick={() => onDelete(row)}
-                  className="rounded-lg p-2 text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
+                  className="rounded-lg p-2 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4 stroke-[2]" />
                 </button>
@@ -1175,21 +1181,57 @@ function DataTable({
   );
 }
 
-function StatusPill({ value }: { value: string }) {
-  const v = value.toUpperCase();
-  const danger = /VENC|REPROV|CANCEL|CRIT|ABERTA|NAO/.test(v);
-  const warn = /PEND|ABERTO|ELABORACAO|TRATAMENTO|EXECUCAO|MEDIO/.test(v);
+function BooleanPill({ value, label }: { value: boolean; label: string }) {
   return (
     <span
       className={cn(
-        'inline-flex rounded-full px-2.5 py-1 text-[11px] font-black',
-        danger
-          ? 'bg-red-50 text-red-700'
-          : warn
-            ? 'bg-amber-50 text-amber-700'
-            : 'bg-green-50 text-green-700'
+        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold border',
+        value
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : 'bg-slate-100 text-slate-600 border-slate-200'
       )}
     >
+      <span
+        className={cn(
+          'h-1.5 w-1.5 rounded-full',
+          value ? 'bg-emerald-500' : 'bg-slate-400'
+        )}
+      />
+      {label}
+    </span>
+  );
+}
+
+function StatusPill({ value }: { value: string }) {
+  const v = value.toUpperCase();
+  const danger = /VENC|REPROV|CANCEL|CRIT|ABERTA|NAO|INATIV/.test(v);
+  const warn = /PEND|ABERTO|ELABORACAO|TRATAMENTO|EXECUCAO|MEDIO|PAUSAD/.test(v);
+  const success = /PAGO|APROV|CONFORM|CONCLU|ATIV|FINALIZ|ENTREG/.test(v);
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold border',
+        danger
+          ? 'bg-red-50 text-red-700 border-red-200'
+          : warn
+            ? 'bg-amber-50 text-amber-700 border-amber-200'
+            : success
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-blue-50 text-blue-700 border-blue-200'
+      )}
+    >
+      <span
+        className={cn(
+          'h-1.5 w-1.5 rounded-full',
+          danger
+            ? 'bg-red-500'
+            : warn
+              ? 'bg-amber-500'
+              : success
+                ? 'bg-emerald-500'
+                : 'bg-blue-500'
+        )}
+      />
       {value}
     </span>
   );
