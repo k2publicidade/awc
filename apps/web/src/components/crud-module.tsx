@@ -1578,6 +1578,19 @@ function Field({
           {relOpts.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
+              {(o as DynamicValue).role
+                ? ` — ${
+                    (o as DynamicValue).role === 'SUPER_ADMIN'
+                      ? 'Super Admin'
+                      : (o as DynamicValue).role === 'ADMIN'
+                        ? 'Admin'
+                        : (o as DynamicValue).role === 'ENGENHEIRO'
+                          ? 'Engenheiro'
+                          : (o as DynamicValue).role === 'ENCARREGADO'
+                            ? 'Encarregado'
+                            : (o as DynamicValue).role
+                  }`
+                : ''}
             </option>
           ))}
         </select>

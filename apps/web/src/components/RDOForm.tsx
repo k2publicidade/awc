@@ -5,11 +5,19 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { uploadFile } from '@/lib/upload-client';
 import { createWatermarkedEvidence, type EvidenceLocation } from '@/lib/photo-evidence';
 import { VoiceInputButton } from '@/components/voice-input-button';
 import { useObra } from '@/hooks/use-obra';
+import { useAuth } from '@/hooks/use-auth';
 import {
   Building2,
   Cloud,
@@ -22,7 +30,6 @@ import {
   Pen,
   Trash2,
   Plus,
-  CalendarIcon,
   ChevronDown,
   Check,
   Loader2,
@@ -62,6 +69,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   const router = useRouter();
   const isEditing = Boolean(rdoId);
   const { activeObra, activeObraId } = useObra();
+  const { user: currentUser } = useAuth(false);
 
   // Loading states
   const [loading, setLoading] = useState(isEditing);
@@ -71,17 +79,17 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
 
   // Data from API
   const [obras, setObras] = useState<{ id: string; nome: string }[]>([]);
-  const [engenheiros, setEngenheiros] = useState<{ id: string; name: string }[]>([]);
+  const [engenheiros, setEngenheiros] = useState<
+    { id: string; name: string; role?: string; email?: string }[]
+  >([]);
 
   // Identificação
-  const [obraId, setObraId] = useState(() => (!isEditing && activeObraId ? activeObraId : ''));
-  const [showObraDropdown, setShowObraDropdown] = useState(false);
+  const [obraId, setObraId] = useState(() => (!isEditing && activeObraId && activeObraId !== 'all' ? activeObraId : ''));
   const [obraNome, setObraNome] = useState(() => (!isEditing && activeObra?.nome ? activeObra.nome : ''));
   const [data, setData] = useState(new Date().toISOString().slice(0, 10));
   const [engenheiro, setEngenheiro] = useState('');
   const [engenheiroId, setEngenheiroId] = useState('');
   const [rdoNumero, setRdoNumero] = useState('');
-  const [showEngDropdown, setShowEngDropdown] = useState(false);
 
   // Condições Climáticas
   const [climaManha, setClimaManha] = useState<'sol' | 'nublado' | 'chuva' | 'encoberto'>('sol');
@@ -127,11 +135,14 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         const obrasData = await obrasRes.json();
         const usersData = await usersRes.json().catch(() => ({}));
 
-        setObras(obrasData.rows || []);
+        const obrasList = obrasData.rows || [];
+        setObras(obrasList);
         const engenheirosList = ((usersData as DynamicValue)?.users || []).map(
           (u: DynamicValue) => ({
             id: u.value,
             name: u.label,
+            role: u.role,
+            email: u.email,
           })
         );
         setEngenheiros(engenheirosList);
@@ -143,6 +154,26 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
     }
     load();
   }, []);
+
+  // Auto select logged user as default engineer on new RDO if not yet selected
+  useEffect(() => {
+    if (!isEditing && !engenheiroId && currentUser?.id && engenheiros.length > 0) {
+      const match = engenheiros.find((e) => e.id === currentUser.id);
+      if (match) {
+        setEngenheiroId(match.id);
+        setEngenheiro(match.name);
+        setNomeAssinatura((prev) => prev || match.name);
+      }
+    }
+  }, [isEditing, engenheiroId, currentUser, engenheiros]);
+
+  // Sync activeObra when creating a new RDO
+  useEffect(() => {
+    if (!isEditing && activeObraId && activeObraId !== 'all' && (!obraId || obraId !== activeObraId)) {
+      setObraId(activeObraId);
+      if (activeObra?.nome) setObraNome(activeObra.nome);
+    }
+  }, [isEditing, activeObraId, activeObra, obraId]);
 
   // Load RDO data when editing
   useEffect(() => {
@@ -580,93 +611,132 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
             icone={<Building2 className="h-5 w-5 text-[#ff5a00]" />}
           >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Obra - Dropdown */}
-              <div className="relative">
+              {/* Obra - Select */}
+              <div>
                 <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">Obra</label>
                 {carregandoObras ? (
                   <div className="flex h-[42px] items-center text-[13px] text-[#9aa3ad]">
-                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#ff5a00]" />
+                    Carregando obras...
+                  </div>
+                ) : (
+                  <Select
+                    value={obraId || undefined}
+                    onValueChange={(val) => {
+                      setObraId(val);
+                      const selected = obras.find((o) => o.id === val);
+                      if (selected) setObraNome(selected.nome);
+                    }}
+                  >
+                    <SelectTrigger className="h-[42px] bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px]">
+                      <SelectValue placeholder="Selecione uma obra..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {obras.length === 0 ? (
+                        <div className="py-3 text-center text-xs text-slate-400">
+                          Nenhuma obra cadastrada
+                        </div>
+                      ) : (
+                        obras.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>
+                            <span className="font-medium text-slate-800">{o.nome}</span>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Data */}
+              <div>
+                <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">Data</label>
+                <Input
+                  type="date"
+                  value={data}
+                  onChange={(e) => setData(e.target.value)}
+                  className="h-[42px] bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px]"
+                />
+              </div>
+
+              {/* Responsável Técnico / Admin - Select */}
+              <div>
+                <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">
+                  Engenheiro / Responsável
+                </label>
+                {carregandoObras ? (
+                  <div className="flex h-[42px] items-center text-[13px] text-[#9aa3ad]">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#ff5a00]" />
                     Carregando...
                   </div>
                 ) : (
-                  <>
-                    <button
-                      onClick={() => setShowObraDropdown(!showObraDropdown)}
-                      className="flex h-[42px] w-full items-center justify-between rounded-[6px] border border-[#e5e7eb] bg-white px-3 text-[13px] text-[#374151]"
-                    >
-                      <span className="truncate">{obraNome || 'Selecione uma obra...'}</span>
-                      <ChevronDown className="h-4 w-4 text-[#9aa3ad] shrink-0" />
-                    </button>
-                    {showObraDropdown && (
-                      <div className="absolute z-20 mt-1 w-full rounded-[6px] border border-[#e5e7eb] bg-white shadow-lg max-h-48 overflow-y-auto">
-                        {obras.map((o) => (
-                          <button
-                            key={o.id}
-                            onClick={() => {
-                              setObraId(o.id);
-                              setObraNome(o.nome);
-                              setShowObraDropdown(false);
-                            }}
-                            className={cn(
-                              'flex w-full items-center px-3 py-2 text-[13px] hover:bg-[#f3f4f6] text-left',
-                              obraId === o.id ? 'text-[#ff5a00] font-medium' : 'text-[#374151]'
-                            )}
-                          >
-                            {obraId === o.id && <Check className="mr-2 h-4 w-4 shrink-0" />}
-                            <span className="truncate">{o.nome}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
+                  <Select
+                    value={engenheiroId || undefined}
+                    onValueChange={(val) => {
+                      setEngenheiroId(val);
+                      const selected = engenheiros.find((e) => e.id === val);
+                      if (selected) {
+                        setEngenheiro(selected.name);
+                        setNomeAssinatura(selected.name);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-[42px] bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px]">
+                      <SelectValue placeholder="Selecione o responsável..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-w-[360px]">
+                      {engenheiros.length === 0 ? (
+                        <div className="py-3 text-center text-xs text-slate-400">
+                          Nenhum responsável disponível
+                        </div>
+                      ) : (
+                        engenheiros.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            <div className="flex flex-col gap-0.5 text-left py-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-800 text-[13px]">
+                                  {e.name}
+                                </span>
+                                {e.role && (
+                                  <span
+                                    className={cn(
+                                      'px-1.5 py-0.5 text-[9px] font-black uppercase rounded tracking-wider',
+                                      e.role === 'ADMIN' || e.role === 'SUPER_ADMIN'
+                                        ? 'bg-purple-100 text-purple-700'
+                                        : e.role === 'ENGENHEIRO'
+                                          ? 'bg-blue-100 text-blue-700'
+                                          : e.role === 'ENCARREGADO'
+                                            ? 'bg-amber-100 text-amber-800'
+                                            : 'bg-slate-100 text-slate-600'
+                                    )}
+                                  >
+                                    {e.role === 'SUPER_ADMIN'
+                                      ? 'Super Admin'
+                                      : e.role === 'ADMIN'
+                                        ? 'Admin'
+                                        : e.role === 'ENGENHEIRO'
+                                          ? 'Engenheiro'
+                                          : e.role === 'ENCARREGADO'
+                                            ? 'Encarregado'
+                                            : e.role}
+                                  </span>
+                                )}
+                              </div>
+                              {e.email && (
+                                <span className="text-[11px] text-slate-400 font-normal truncate">
+                                  {e.email}
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
-              <div>
-                <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">Data</label>
-                <div className="relative">
-                  <Input
-                    type="date"
-                    value={data}
-                    onChange={(e) => setData(e.target.value)}
-                    className="h-[42px] bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px] pr-10"
-                  />
-                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9aa3ad] pointer-events-none" />
-                </div>
-              </div>
-              <div className="relative">
-                <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">
-                  Engenheiro responsável
-                </label>
-                <button
-                  onClick={() => setShowEngDropdown(!showEngDropdown)}
-                  className="flex h-[42px] w-full items-center justify-between rounded-[6px] border border-[#e5e7eb] bg-white px-3 text-[13px] text-[#374151]"
-                >
-                  <span className="truncate">{engenheiro || 'Selecione...'}</span>
-                  <ChevronDown className="h-4 w-4 text-[#9aa3ad] shrink-0" />
-                </button>
-                {showEngDropdown && (
-                  <div className="absolute z-20 mt-1 w-full rounded-[6px] border border-[#e5e7eb] bg-white shadow-lg max-h-48 overflow-y-auto">
-                    {engenheiros.map((e) => (
-                      <button
-                        key={e.id}
-                        onClick={() => {
-                          setEngenheiro(e.name);
-                          setEngenheiroId(e.id);
-                          setNomeAssinatura(e.name);
-                          setShowEngDropdown(false);
-                        }}
-                        className={cn(
-                          'flex w-full items-center px-3 py-2 text-[13px] hover:bg-[#f3f4f6]',
-                          engenheiro === e.name ? 'text-[#ff5a00] font-medium' : 'text-[#374151]'
-                        )}
-                      >
-                        {engenheiro === e.name && <Check className="mr-2 h-4 w-4 shrink-0" />}
-                        {e.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+
+              {/* RDO nº */}
               <div>
                 <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">
                   RDO n°
@@ -1246,7 +1316,7 @@ function Card({
     <section
       id={`rdo-card-${numero}`}
       style={{ order: numero }}
-      className="w-full min-w-0 scroll-mt-48 overflow-hidden rounded-2xl border border-[#e5e7eb] bg-white shadow-[0_1px_3px_rgba(0,0,0,.04)] sm:rounded-[12px]"
+      className="w-full min-w-0 scroll-mt-48 rounded-2xl border border-[#e5e7eb] bg-white shadow-[0_1px_3px_rgba(0,0,0,.04)] sm:rounded-[12px]"
     >
       <div className="flex items-center gap-2 px-5 py-4 border-b border-[#f3f4f6]">
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ff5a00] text-white text-[12px] font-bold">

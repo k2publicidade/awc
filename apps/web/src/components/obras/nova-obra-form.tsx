@@ -25,6 +25,8 @@ import {
 interface Option {
   value: string;
   label: string;
+  role?: string;
+  email?: string;
 }
 
 const TIPO_OBRA_OPTIONS = [
@@ -467,6 +469,19 @@ export function NovaObraForm() {
                   {usuarios.map((u) => (
                     <option key={u.value} value={u.value}>
                       {u.label}
+                      {u.role
+                        ? ` — ${
+                            u.role === 'SUPER_ADMIN'
+                              ? 'Super Admin'
+                              : u.role === 'ADMIN'
+                                ? 'Admin'
+                                : u.role === 'ENGENHEIRO'
+                                  ? 'Engenheiro'
+                                  : u.role === 'ENCARREGADO'
+                                    ? 'Encarregado'
+                                    : u.role
+                          }`
+                        : ''}
                     </option>
                   ))}
                 </select>

@@ -40,7 +40,7 @@ export async function GET() {
       }),
       prisma.user.findMany({
         where: { tenantId, isActive: true },
-        select: { id: true, name: true },
+        select: { id: true, name: true, role: true, email: true },
         orderBy: { name: 'asc' },
         take: 500,
       }),
@@ -112,7 +112,12 @@ export async function GET() {
 
     return NextResponse.json({
       obras: obras.map((o) => ({ value: o.id, label: `${o.nome} (${o.codigo})` })),
-      users: users.map((u) => ({ value: u.id, label: u.name })),
+      users: users.map((u) => ({
+        value: u.id,
+        label: u.name,
+        role: u.role,
+        email: u.email,
+      })),
       fornecedores: fornecedores.map((f) => ({
         value: f.id,
         label: f.nomeFantasia || f.razaoSocial,
