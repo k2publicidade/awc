@@ -43,7 +43,10 @@ export const signupSchema = z
       .regex(/[0-9]/, 'Inclua ao menos um número'),
     confirmPassword: z.string(),
     plan: z.enum(['STARTER', 'PRO', 'BUSINESS']).default('PRO'),
-    acceptTerms: z.literal(true),
+    acceptTerms: z.preprocess(
+      (val) => val === true || val === 'true' || val === 'on' || val === 1 || val === '1',
+      z.literal(true, { message: 'Você deve aceitar os termos de uso' })
+    ),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'As senhas não conferem',

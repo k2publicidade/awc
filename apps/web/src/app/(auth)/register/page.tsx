@@ -1,20 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Check, Loader2, ShieldCheck, ArrowRight } from 'lucide-react';
 import { SAAS_PLANS, type SaasPlan } from '@/lib/saas';
 import { RigorLogo } from '@/components/ui/rigor-logo';
 
-export default function RegisterPage() {
-  const publicSignupEnabled =
-    process.env.NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP === 'true' || process.env.NODE_ENV !== 'production';
+function RegisterForm() {
+  const publicSignupEnabled = process.env.NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP !== 'false';
   const router = useRouter();
-  const [plan, setPlan] = useState<SaasPlan>('PRO');
+  const searchParams = useSearchParams();
+  const initialPlanParam = searchParams.get('plan')?.toUpperCase() as SaasPlan | undefined;
+  const initialPlan = (initialPlanParam && initialPlanParam in SAAS_PLANS) ? initialPlanParam : 'PRO';
+
+  const [plan, setPlan] = useState<SaasPlan>(initialPlan);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (initialPlanParam && initialPlanParam in SAAS_PLANS) {
+      setPlan(initialPlanParam);
+    }
+  }, [initialPlanParam]);
 
   if (!publicSignupEnabled) {
     return (
@@ -53,7 +62,11 @@ export default function RegisterPage() {
     const response = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, plan }),
+      body: JSON.stringify({
+        ...payload,
+        plan,
+        acceptTerms: payload.acceptTerms === 'true' || payload.acceptTerms === 'on',
+      }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -96,7 +109,7 @@ export default function RegisterPage() {
             </p>
             <div className="mt-8 grid gap-3 text-sm text-slate-300 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               {[
-                '14 dias grátis',
+                '10 dias grátis',
                 'Sem cartão de crédito',
                 'App para o campo',
                 'Dados isolados por empresa',
@@ -164,7 +177,7 @@ export default function RegisterPage() {
               </div>
               <div className="mt-6">
                 <p className="mb-3 text-[11px] font-black uppercase tracking-wider text-[#354654]">
-                  Plano após o período de teste de 14 dias
+                  Plano após o período de teste de 10 dias
                 </p>
                 <div className="grid gap-3 sm:grid-cols-3">
                   {(Object.keys(SAAS_PLANS) as SaasPlan[]).map((key) => {
@@ -241,6 +254,20 @@ export default function RegisterPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="grid min-h-screen place-items-center bg-[#0B1F33] text-white">
+          <Loader2 className="h-8 w-8 animate-spin text-[#1687FF]" />
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }
 

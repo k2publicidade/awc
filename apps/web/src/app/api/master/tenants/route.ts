@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const passwordHash = await bcrypt.hash(data.temporaryPassword, 12);
     const trialEndsAt =
       data.subscriptionStatus === 'TRIAL'
-        ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+        ? new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
         : null;
     const created = await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({

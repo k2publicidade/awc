@@ -1,0 +1,1679 @@
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+console.log('--- Construindo Manual do Usuário RIGOR (Versão Executiva Completa) ---');
+
+const docsDir = path.resolve(__dirname, '..', 'docs');
+const rootDir = path.resolve(__dirname, '..');
+
+if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
+
+const htmlFilePath = path.join(docsDir, 'manual-do-usuario-rigor.html');
+const pdfFilePathDocs = path.join(docsDir, 'manual-do-usuario-rigor.pdf');
+const pdfFilePathRoot = path.join(rootDir, 'MANUAL-DO-USUARIO-RIGOR.pdf');
+
+// SVGs inline em alta resolução para ícones nítidos em qualquer escala
+const svgIcons = {
+  check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color: #059669;"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+  star: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #1687FF;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`,
+  alert: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #D97706;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+  shield: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #1687FF;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`,
+  mic: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #DC2626;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>`,
+  building: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #1687FF;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22.01"></line><line x1="15" y1="22" x2="15" y2="22.01"></line><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="9" y2="18.01"></line><line x1="15" y1="18" x2="15" y2="18.01"></line></svg>`,
+};
+
+const fullHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual do Usuário — RIGOR Gestão de Obras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-dark: #0B1F33;
+      --primary-navy: #071524;
+      --accent-blue: #1687FF;
+      --accent-blue-hover: #0D6EFD;
+      --accent-light: #EBF5FF;
+      --accent-cyan: #00D2D3;
+      --text-main: #1E293B;
+      --text-muted: #64748B;
+      --text-light: #94A3B8;
+      --border-color: #E2E8F0;
+      --border-dark: #334155;
+      --bg-light: #F8FAFC;
+      --bg-card: #FFFFFF;
+      --success: #059669;
+      --success-light: #ECFDF5;
+      --warning: #D97706;
+      --warning-light: #FFFBEB;
+      --danger: #DC2626;
+      --danger-light: #FEF2F2;
+      --info: #0284C7;
+      --info-light: #F0F9FF;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+      background: #FFFFFF;
+      line-height: 1.55;
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+
+    @page :first {
+      margin: 0;
+    }
+
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    .avoid-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* CAPA */
+    .cover-page {
+      height: 297mm;
+      width: 210mm;
+      padding: 0;
+      margin: 0;
+      background: linear-gradient(135deg, #071524 0%, #0B1F33 55%, #0A294A 100%);
+      color: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .cover-page::before {
+      content: "";
+      position: absolute;
+      top: -120px;
+      right: -120px;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(22, 135, 255, 0.28) 0%, rgba(22, 135, 255, 0) 70%);
+      border-radius: 50%;
+    }
+
+    .cover-page::after {
+      content: "";
+      position: absolute;
+      bottom: -100px;
+      left: -100px;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(0, 210, 211, 0.18) 0%, rgba(0, 210, 211, 0) 70%);
+      border-radius: 50%;
+    }
+
+    .cover-header {
+      padding: 45px 40px 0 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .brand-logo-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-symbol {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, #1687FF 0%, #0052B4 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 22px;
+      color: #FFFFFF;
+      box-shadow: 0 4px 15px rgba(22, 135, 255, 0.4);
+    }
+
+    .brand-text-block {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-name {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #FFFFFF;
+      line-height: 1;
+    }
+
+    .brand-tagline {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      color: #1687FF;
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    .document-tag {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #CBD5E1;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .cover-body {
+      padding: 0 40px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .cover-badge-intro {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(22, 135, 255, 0.18);
+      border: 1px solid rgba(22, 135, 255, 0.45);
+      padding: 6px 14px;
+      border-radius: 6px;
+      color: #70B4FF;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 18px;
+    }
+
+    .cover-title {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1.15;
+      color: #FFFFFF;
+      margin-bottom: 14px;
+      letter-spacing: -0.02em;
+    }
+
+    .cover-title span {
+      background: linear-gradient(135deg, #1687FF 0%, #00D2D3 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .cover-subtitle {
+      font-size: 15px;
+      color: #CBD5E1;
+      line-height: 1.6;
+      max-width: 540px;
+      font-weight: 400;
+      margin-bottom: 30px;
+    }
+
+    .cover-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .cover-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 14px;
+      backdrop-filter: blur(5px);
+    }
+
+    .cover-card-icon {
+      font-size: 18px;
+      margin-bottom: 6px;
+      color: #1687FF;
+    }
+
+    .cover-card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 4px;
+    }
+
+    .cover-card-desc {
+      font-size: 10px;
+      color: #94A3B8;
+      line-height: 1.4;
+    }
+
+    .cover-footer {
+      padding: 25px 40px 35px 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      position: relative;
+      z-index: 2;
+      background: rgba(7, 21, 36, 0.6);
+    }
+
+    .meta-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .meta-label {
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #64748B;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .meta-value {
+      font-size: 11px;
+      font-weight: 600;
+      color: #E2E8F0;
+    }
+
+    /* CABEÇALHO E RODAPÉ DAS PÁGINAS INTERNAS */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      margin-bottom: 18px;
+      border-bottom: 1.5px solid var(--border-color);
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .page-header .doc-name {
+      color: var(--primary-dark);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .page-header .doc-name span {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--accent-blue);
+      border-radius: 50%;
+    }
+
+    /* ELEMENTOS TIPOGRÁFICOS */
+    h1, h2, h3, h4 {
+      color: var(--primary-dark);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chapter-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--primary-dark);
+      color: #FFFFFF;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    h2 {
+      font-size: 14.5px;
+      margin: 14px 0 8px 0;
+      color: var(--primary-dark);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 4px;
+    }
+
+    h3 {
+      font-size: 13px;
+      margin: 10px 0 4px 0;
+      color: #1E293B;
+    }
+
+    p {
+      margin-bottom: 8px;
+      color: #334155;
+      text-align: justify;
+      font-size: 12.5px;
+    }
+
+    strong {
+      color: var(--primary-dark);
+      font-weight: 700;
+    }
+
+    /* CAIXAS DE DESTAQUE (CALLOUTS) */
+    .callout {
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      font-size: 12px;
+      line-height: 1.45;
+      border-left: 3.5px solid;
+    }
+
+    .callout.tip {
+      background: var(--accent-light);
+      border-color: var(--accent-blue);
+      color: #0369A1;
+    }
+
+    .callout.warning {
+      background: var(--warning-light);
+      border-color: var(--warning);
+      color: #92400E;
+    }
+
+    .callout.success {
+      background: var(--success-light);
+      border-color: var(--success);
+      color: #065F46;
+    }
+
+    .callout.info {
+      background: var(--info-light);
+      border-color: var(--info);
+      color: #0369A1;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+    }
+
+    /* TABELAS */
+    .table-container {
+      width: 100%;
+      margin: 10px 0;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+      text-align: left;
+    }
+
+    th {
+      background: #0B1F33;
+      color: #FFFFFF;
+      font-weight: 700;
+      padding: 7px 10px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border-color);
+      color: #334155;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:nth-child(even) td {
+      background: #F8FAFC;
+    }
+
+    /* BADGES */
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-blue { background: #E0F2FE; color: #0284C7; }
+    .badge-green { background: #D1FAE5; color: #059669; }
+    .badge-amber { background: #FEF3C7; color: #D97706; }
+    .badge-purple { background: #EDE9FE; color: #7C3AED; }
+    .badge-dark { background: #0B1F33; color: #FFFFFF; }
+
+    /* ETAPAS / STEP BY STEP */
+    .steps-container {
+      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 10px;
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 12px;
+    }
+
+    .step-number {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 11px;
+      shrink: 0;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-title {
+      font-weight: 700;
+      color: var(--primary-dark);
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .step-desc {
+      font-size: 11px;
+      color: #475569;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* CARDS & GRIDS */
+    .card-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .card-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .info-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+
+    .info-card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .info-card-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+
+    .info-card-text {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin: 0;
+    }
+
+    /* SIMULAÇÃO DE INTERFACE / MOCKUP */
+    .ui-mockup {
+      background: #0B1F33;
+      border-radius: 6px;
+      border: 1px solid var(--border-dark);
+      padding: 8px 12px;
+      color: #FFFFFF;
+      margin: 8px 0;
+      font-size: 10.5px;
+    }
+
+    .ui-mockup-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 9.5px;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .ui-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-red { background: #EF4444; }
+    .dot-yellow { background: #F59E0B; }
+    .dot-green { background: #10B981; }
+
+    /* SUMÁRIO / ÍNDICE */
+    .toc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .toc-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+    }
+
+    .toc-number {
+      font-weight: 800;
+      color: var(--accent-blue);
+      font-size: 13px;
+      line-height: 1.2;
+    }
+
+    .toc-text-title {
+      font-weight: 700;
+      font-size: 11.5px;
+      color: var(--primary-dark);
+      margin-bottom: 2px;
+    }
+
+    .toc-text-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    .fluxogram {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #F8FAFC;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px 8px;
+      margin: 10px 0;
+    }
+
+    .fluxo-node {
+      background: #FFFFFF;
+      border: 1.5px solid var(--accent-blue);
+      border-radius: 5px;
+      padding: 6px 8px;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      width: 100px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+
+    .fluxo-arrow {
+      color: var(--accent-blue);
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .checklist-ul {
+      list-style: none;
+      margin: 6px 0;
+    }
+
+    .checklist-ul li {
+      position: relative;
+      padding-left: 20px;
+      margin-bottom: 5px;
+      font-size: 11.5px;
+      color: #334155;
+    }
+
+    .checklist-ul li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: var(--success);
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .glossary-term {
+      font-weight: 700;
+      color: var(--accent-blue);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================= -->
+  <!-- CAPA DO MANUAL -->
+  <!-- ========================================================= -->
+  <div class="cover-page">
+    <div class="cover-header">
+      <div class="brand-logo-badge">
+        <div class="logo-symbol">R</div>
+        <div class="brand-text-block">
+          <div class="brand-name">RIGOR</div>
+          <div class="brand-tagline">GESTÃO DE OBRAS</div>
+        </div>
+      </div>
+      <div class="document-tag">Manual Oficial do Usuário</div>
+    </div>
+
+    <div class="cover-body">
+      <div class="cover-badge-intro">
+        <span>🚀 Guia de Implantação e Primeiros Passos</span>
+      </div>
+      <div class="cover-title">
+        Domine a Gestão de Suas Obras com <span>Controle Total</span>
+      </div>
+      <div class="cover-subtitle">
+        O guia passo a passo, prático e descomplicado para engenheiros, mestres de obras, encarregados, gestores financeiros e administradores utilizarem o sistema RIGOR com máxima produtividade.
+      </div>
+
+      <div class="cover-grid">
+        <div class="cover-card">
+          <div class="cover-card-icon">⚡</div>
+          <div class="cover-card-title">Canteiro Conectado</div>
+          <div class="cover-card-desc">RDO digital diário com fotos, clima, efetivo e digitação rápida por voz.</div>
+        </div>
+        <div class="cover-card">
+          <div class="cover-card-icon">📊</div>
+          <div class="cover-card-title">Controle Rigoroso</div>
+          <div class="cover-card-desc">Cronograma físico-financeiro, avanço de etapas e medições precisas.</div>
+        </div>
+        <div class="cover-card">
+          <div class="cover-card-icon">🛡️</div>
+          <div class="cover-card-title">Qualidade & Segurança</div>
+          <div class="cover-card-desc">FVS, não conformidades, DDS e total conformidade com a NR-18.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <div class="meta-group">
+        <div class="meta-label">Plataforma</div>
+        <div class="meta-value">RIGOR SaaS — Construction ERP</div>
+      </div>
+      <div class="meta-group">
+        <div class="meta-label">Versão do Guia</div>
+        <div class="meta-value">Edição 2026.1 (Piloto Assistido)</div>
+      </div>
+      <div class="meta-group">
+        <div class="meta-label">Público-Alvo</div>
+        <div class="meta-value">Equipe de Campo e Escritório</div>
+      </div>
+      <div class="meta-group">
+        <div class="meta-label">Acesso Web</div>
+        <div class="meta-value">awc-web-ruby.vercel.app</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 2: SUMÁRIO EXECUTIVO & GLOSSÁRIO RÁPIDO -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Sumário & Apresentação</div>
+  </div>
+
+  <h1><span class="chapter-number">📖</span> Sumário Executivo</h1>
+  <p>Este manual foi elaborado para capacitar você e sua equipe a utilizarem todas as ferramentas da plataforma <strong>RIGOR</strong> de maneira imediata, segura e intuitiva. Abaixo estão os tópicos abordados:</p>
+
+  <div class="toc-grid">
+    <div class="toc-item">
+      <div class="toc-number">01</div>
+      <div>
+        <div class="toc-text-title">Boas-Vindas e Perfis de Acesso</div>
+        <div class="toc-text-desc">O propósito da plataforma e o que cada função pode realizar no sistema.</div>
+      </div>
+    </div>
+
+    <div class="toc-item">
+      <div class="toc-number">02</div>
+      <div>
+        <div class="toc-text-title">Primeiro Acesso & Navegação</div>
+        <div class="toc-text-desc">Login inicial, troca obrigatória de senha e o conceito de "Obra Ativa".</div>
+      </div>
+    </div>
+
+    <div class="toc-item">
+      <div class="toc-number">03</div>
+      <div>
+        <div class="toc-text-title">Gestão e Importação de Obras</div>
+        <div class="toc-text-desc">Cadastro manual e importação inteligente via Excel, CSV ou Word.</div>
+      </div>
+    </div>
+
+    <div class="toc-item">
+      <div class="toc-number">04</div>
+      <div>
+        <div class="toc-text-title">Cronograma & Avanço Físico</div>
+        <div class="toc-text-desc">Controle de etapas, predecessoras, prazos e percentuais de conclusão.</div>
+      </div>
+    </div>
+
+    <div class="toc-item">
+      <div class="toc-number">05</div>
+      <div>
+        <div class="toc-text-title">RDO — Relatório Diário de Obra</div>
+        <div class="toc-text-desc">Preenchimento diário, clima, mão de obra, voz, fotos e assinatura digital.</div>
+      </div>
+    </div>
+
+    <div class="toc-item">
+      <div class="toc-number">06</div>
+      <div>
+        <div class="toc-text-title">Materiais, Estoque & Suprimentos</div>
+        <div class="toc-text-desc">Requisições no canteiro, aprovação, entrada de NF e saldos de estoque.</div>
+      </div>
+    </div>
+
+    <div class="toc-item">
+      <div class="toc-number">07</div>
+      <div>
+        <div class="toc-text-title">Financeiro, Contratos & Medições</div>
+        <div class="toc-text-desc">Orçamentos, controle de despesas/receitas e medições de empreiteiros.</div>
+      </div>
+    </div>
+
+    <div class="toc-item">
+      <div class="toc-number">08</div>
+      <div>
+        <div class="toc-text-title">Qualidade & Segurança do Trabalho</div>
+        <div class="toc-text-desc">Fichas de verificação (FVS), não conformidades (NC), DDS e NR-18.</div>
+      </div>
+    </div>
+
+    <div class="toc-item">
+      <div class="toc-number">09</div>
+      <div>
+        <div class="toc-text-title">Documentos & Galeria de Fotos</div>
+        <div class="toc-text-desc">Armazenamento seguro de projetos (PDF/DWG), alvarás e histórico visual.</div>
+      </div>
+    </div>
+
+    <div class="toc-item">
+      <div class="toc-number">10</div>
+      <div>
+        <div class="toc-text-title">Rotina Prática Recomendada</div>
+        <div class="toc-text-desc">Checklist diário para Encarregados, Engenheiros e Diretores de Obra.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Glossário Rápido de Termos do Sistema</h2>
+  <div class="table-container avoid-break">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 25%;">Termo</th>
+          <th>Significado Prático no RIGOR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="glossary-term">RDO</span></td>
+          <td><strong>Relatório Diário de Obra:</strong> Registro legal do clima, efetivo, máquinas e atividades de cada dia.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">FVS</span></td>
+          <td><strong>Ficha de Verificação de Serviço:</strong> Checklist de controle de qualidade para inspecionar etapas prontas.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">DDS</span></td>
+          <td><strong>Diálogo Diário de Segurança:</strong> Conversa curta de 10 minutos com o time antes de iniciar os trabalhos.</td>
+        </tr>
+        <tr>
+          <td><span class="glossary-term">Obra Ativa</span></td>
+          <td>O filtro selecionado no menu superior que define qual obra você está gerenciando no momento.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 3: CAPÍTULO 1 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 01 — Boas-Vindas & Perfis de Acesso</div>
+  </div>
+
+  <h1><span class="chapter-number">01</span> Boas-Vindas à Plataforma RIGOR</h1>
+  <p>O <strong>RIGOR</strong> é uma plataforma integrada desenvolvida especificamente para a construção civil, focada em resolver o principal gargalo das construtoras: a <strong>desconexão entre o canteiro de obras e o escritório</strong>.</p>
+
+  <p>Com o RIGOR, todas as informações da sua obra são centralizadas em uma única base de dados confiável, permitindo relatórios em tempo real, redução de desperdícios, eliminação de retrabalhos e previsibilidade orçamentária.</p>
+
+  <h2>Perfis de Acesso e Responsabilidades</h2>
+  <p>Cada membro da sua equipe possui um perfil de acesso exclusivo, garantindo que cada profissional veja apenas o que é relevante para a sua função com total segurança:</p>
+
+  <div class="table-container avoid-break">
+    <table>
+      <thead>
+        <tr>
+          <th>Perfil / Função</th>
+          <th>Responsabilidade Principal</th>
+          <th>Módulos Acessíveis</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-dark">ADMIN / SUPER ADMIN</span></td>
+          <td>Diretoria e Sócios. Visão executiva geral, gestão de planos, usuários e finanças.</td>
+          <td>Todos os módulos do sistema e configurações globais da empresa.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">ENGENHEIRO</span></td>
+          <td>Responsável Técnico da Obra. Planejamento, aprovação de RDOs, medições e qualidade.</td>
+          <td>Obras, Cronograma, RDO, Qualidade, Segurança, Documentos e Relatórios.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-amber">ENCARREGADO / MESTRE</span></td>
+          <td>Líder no Canteiro. Preenchimento diário de RDO, requisição de materiais e DDS.</td>
+          <td>RDO, Materiais (Requisições), Segurança (DDS) e Equipe de Campo.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-green">FINANCEIRO</span></td>
+          <td>Controle de caixa, contas a pagar/receber, orçamentos e contratos de empreiteiros.</td>
+          <td>Financeiro, Contratos, Orçamentos, Medições e Relatórios.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-purple">ALMOXARIFE</span></td>
+          <td>Recepção de insumos no canteiro, conferência de notas fiscais e baixas de estoque.</td>
+          <td>Materiais, Estoque, Entradas/Saídas e Obras.</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blue">CLIENTE / INVESTIDOR</span></td>
+          <td>Acompanhamento transparente do andamento da sua obra sem dados confidenciais.</td>
+          <td>Andamento físico da obra, Galeria de Fotos e Relatórios liberados.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Fluxo de Comunicação e Aprovações</h2>
+  <div class="fluxogram avoid-break">
+    <div class="fluxo-node">1. Canteiro de Obras<br><small style="color: #64748B;">Mestre / Encarregado</small></div>
+    <div class="fluxo-arrow">➔</div>
+    <div class="fluxo-node">2. Validação Técnica<br><small style="color: #64748B;">Engenheiro Residente</small></div>
+    <div class="fluxo-arrow">➔</div>
+    <div class="fluxo-node">3. Gestão & Pagamento<br><small style="color: #64748B;">Financeiro & Compras</small></div>
+    <div class="fluxo-arrow">➔</div>
+    <div class="fluxo-node">4. Painel Executivo<br><small style="color: #64748B;">Diretoria & Cliente</small></div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 4: CAPÍTULO 2 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 02 — Primeiro Acesso & Navegação</div>
+  </div>
+
+  <h1><span class="chapter-number">02</span> Primeiro Acesso e Navegação</h1>
+
+  <p>O RIGOR é 100% web e responsivo. Isso significa que você pode acessá-lo tanto pelo computador do escritório quanto pelo smartphone ou tablet direto no canteiro de obras, sem precisar instalar nada pesado.</p>
+
+  <h2>Passo a Passo do Primeiro Acesso</h2>
+
+  <div class="steps-container avoid-break">
+    <div class="step-item">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <div class="step-title">Acesse o endereço da plataforma</div>
+        <div class="step-desc">Abra seu navegador (Google Chrome, Microsoft Edge ou Safari) e digite o endereço fornecido pelo seu administrador (ex: <code>awc-web-ruby.vercel.app/login</code>).</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <div class="step-title">Insira seu e-mail e a senha temporária</div>
+        <div class="step-desc">Digite o e-mail corporativo cadastrado pelo administrador e a senha inicial que você recebeu.</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <div class="step-title">Troca Obrigatória de Senha no Primeiro Login</div>
+        <div class="step-desc">Por segurança, o sistema exigirá que você crie sua senha pessoal definitiva. Escolha uma senha segura com no mínimo 8 caracteres, contendo números e letras.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>O Conceito Mais Importante: "Obra Ativa" (Filtro Global)</h2>
+
+  <p>No menu lateral esquerdo da plataforma, logo abaixo do logotipo, você encontrará o <strong>Widget de Obra Ativa</strong>. Ele é o coração da navegação no RIGOR:</p>
+
+  <div class="card-grid-2 avoid-break">
+    <div class="info-card" style="border-top: 3px solid var(--accent-blue);">
+      <div class="info-card-header">
+        <span style="font-size: 16px;">🌐</span>
+        <div class="info-card-title">Modo: "Todas as Obras" (Visão Global)</div>
+      </div>
+      <p class="info-card-text">Permite à diretoria e ao financeiro enxergar indicadores consolidados da empresa inteira: total de faturamento, lista completa de compras pendentes e métricas gerais.</p>
+    </div>
+
+    <div class="info-card" style="border-top: 3px solid var(--success);">
+      <div class="info-card-header">
+        <span style="font-size: 16px;">🏢</span>
+        <div class="info-card-title">Modo: "Obra Selecionada" (Foco Específico)</div>
+      </div>
+      <p class="info-card-text">Ao clicar e escolher uma obra (ex: <em>Edifício Solar das Palmeiras</em>), <strong>todos os menus da plataforma (Cronograma, RDO, Estoque, Documentos)</strong> passam a exibir exclusivamente os dados daquela obra.</p>
+    </div>
+  </div>
+
+  <div class="ui-mockup avoid-break">
+    <div class="ui-mockup-header">
+      <span class="ui-dot dot-red"></span>
+      <span class="ui-dot dot-yellow"></span>
+      <span class="ui-dot dot-green"></span>
+      <span>Simulação da Barra Lateral — Obra Ativa</span>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.06); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(22,135,255,0.3);">
+      <div>
+        <div style="font-size: 9px; color: #94A3B8; text-transform: uppercase; font-weight: 700;">OBRA ATIVA EM FOCO</div>
+        <div style="font-size: 12px; font-weight: 700; color: #FFFFFF;">🏢 Residencial Solar dos Bosques</div>
+        <div style="font-size: 10px; color: #70B4FF;">OBR-2026-01 · São Paulo / SP</div>
+      </div>
+      <span class="badge badge-blue">[ Alterar Obra ]</span>
+    </div>
+  </div>
+
+  <div class="callout warning avoid-break">
+    <div class="callout-title">⚠️ Atenção antes de lançar dados</div>
+    Antes de criar um novo RDO, requisição de material ou checklist de inspeção, verifique sempre se a <strong>Obra Ativa</strong> selecionada no topo do menu lateral é a obra correta onde você está atuando!
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 5: CAPÍTULO 3 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 03 — Gestão & Importação de Obras</div>
+  </div>
+
+  <h1><span class="chapter-number">03</span> Gestão & Importação de Obras</h1>
+
+  <p>Uma <strong>Obra</strong> no RIGOR é a unidade central de gestão. Nela ficam vinculados o cronograma físico, o orçamento, a equipe alocada, os relatórios diários (RDO), o estoque de materiais e os documentos legais.</p>
+
+  <h2>Como Cadastrar uma Nova Obra Manualmente</h2>
+  <div class="steps-container avoid-break">
+    <div class="step-item">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <div class="step-title">Acesse o menu "Obras" e clique em "Nova Obra"</div>
+        <div class="step-desc">Clique no botão azul <strong>+ Nova Obra</strong> no canto superior direito da tela de listagem de obras.</div>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <div class="step-title">Preencha as Informações Básicas</div>
+        <div class="step-desc">
+          • <strong>Nome da Obra</strong> (ex: <em>Residencial Vista Verde</em>)<br>
+          • <strong>Código da Obra</strong> (ex: <em>OBR-2026-01</em>)<br>
+          • <strong>Tipo da Obra</strong> (Edifício Residencial, Comercial, Galpão, Infraestrutura, etc.)<br>
+          • <strong>Endereço, Cidade e Estado</strong><br>
+          • <strong>Data de Início Prevista e Data de Conclusão Prevista</strong>
+        </div>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <div class="step-title">Defina o Responsável Técnico e Salve</div>
+        <div class="step-desc">Selecione o Engenheiro responsável da sua equipe cadastrada e clique em <strong>Criar Obra</strong>.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Importação Assistida de Obras (Excel, CSV, Word)</h2>
+  <p>Para construtoras que já possuem planejamentos em planilhas, o RIGOR conta com uma <strong>Central de Importação Inteligente</strong> em <code>/obras/importar</code> que poupa horas de digitação:</p>
+
+  <div class="card-grid-3 avoid-break">
+    <div class="info-card">
+      <div class="info-card-header">
+        <span class="badge badge-green">Passo 1</span>
+        <div class="info-card-title">Baixar Modelo</div>
+      </div>
+      <p class="info-card-text">Clique em <em>"Baixar Planilha Modelo (.xlsx)"</em> na tela de importação. A planilha já vem formatada com abas para dados gerais e etapas.</p>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <span class="badge badge-blue">Passo 2</span>
+        <div class="info-card-title">Preencher & Subir</div>
+      </div>
+      <p class="info-card-text">Cole os dados da sua obra e arraste o arquivo para a área de upload. O sistema aceita <code>.xlsx</code>, <code>.csv</code> e <code>.docx</code> de até 4 MB.</p>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <span class="badge badge-purple">Passo 3</span>
+        <div class="info-card-title">Pré-visualizar & Gravar</div>
+      </div>
+      <p class="info-card-text">O RIGOR analisa datas e custos. Revise a tabela de pré-visualização e clique em <em>"Confirmar e Criar Obra"</em>.</p>
+    </div>
+  </div>
+
+  <div class="callout success avoid-break">
+    <div class="callout-title">✓ Importação Atômica e Segura</div>
+    Ao confirmar a importação, a obra e todas as etapas de cronograma são criadas simultaneamente em uma única transação no banco de dados. Caso ocorra qualquer inconsistência, o sistema avisa exatamente em qual linha corrigir.
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 6: CAPÍTULO 4 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 04 — Cronograma & Avanço Físico</div>
+  </div>
+
+  <h1><span class="chapter-number">04</span> Cronograma & Avanço Físico</h1>
+
+  <p>O módulo de <strong>Cronograma</strong> permite estruturar a obra em fases e etapas lógicas, definindo prazos, dependências e pesos percentuais para acompanhar o andamento físico em tempo real.</p>
+
+  <h2>Estrutura Típica de Etapas da Obra</h2>
+  <div class="table-container avoid-break">
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Etapa do Cronograma</th>
+          <th>Peso Típico</th>
+          <th>Predecessora</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>ETP-01</strong></td>
+          <td>Serviços Preliminares e Canteiro</td>
+          <td>4%</td>
+          <td>-</td>
+        </tr>
+        <tr>
+          <td><strong>ETP-02</strong></td>
+          <td>Fundações e Movimentação de Terra</td>
+          <td>12%</td>
+          <td>ETP-01 (Fim-Início)</td>
+        </tr>
+        <tr>
+          <td><strong>ETP-03</strong></td>
+          <td>Estrutura (Concreto Armado / Pré-moldado)</td>
+          <td>28%</td>
+          <td>ETP-02 (Fim-Início)</td>
+        </tr>
+        <tr>
+          <td><strong>ETP-04</strong></td>
+          <td>Alvenaria e Vedações</td>
+          <td>12%</td>
+          <td>ETP-03 (Início-Início c/ atraso)</td>
+        </tr>
+        <tr>
+          <td><strong>ETP-05</strong></td>
+          <td>Instalações Hidrossanitárias e Elétricas</td>
+          <td>14%</td>
+          <td>ETP-04 (Início-Início)</td>
+        </tr>
+        <tr>
+          <td><strong>ETP-06</strong></td>
+          <td>Revestimentos, Pisos e Pintura</td>
+          <td>22%</td>
+          <td>ETP-05 (Fim-Início)</td>
+        </tr>
+        <tr>
+          <td><strong>ETP-07</strong></td>
+          <td>Limpeza Final e Vistoria de Entrega</td>
+          <td>8%</td>
+          <td>ETP-06 (Fim-Início)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Como Atualizar o Progresso Físico</h2>
+  <div class="steps-container avoid-break">
+    <div class="step-item">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <div class="step-title">Abra o menu "Cronograma" ou "Andamento"</div>
+        <div class="step-desc">Localize a etapa que teve progresso na semana (ex: <em>Alvenaria do 3º Pavimento</em>).</div>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <div class="step-title">Insira a Porcentagem Realizada (%)</div>
+        <div class="step-desc">Atualize o valor percentual (ex: de 40% para 65%). O sistema calcula automaticamente o impacto no progresso total da obra com base no peso de cada etapa.</div>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <div class="step-title">Acompanhe a Curva de Previsto vs Realizado</div>
+        <div class="step-desc">O gráfico de andamento compara a linha de base original com o avanço real do canteiro, alertando instantaneamente se a obra estiver em risco de atraso.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 7: CAPÍTULO 5 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 05 — RDO (Relatório Diário de Obra)</div>
+  </div>
+
+  <h1><span class="chapter-number">05</span> O RDO: Relatório Diário de Obra</h1>
+
+  <p>O <strong>RDO</strong> é o diário oficial da sua construção. Ele registra formalmente tudo o que aconteceu no canteiro a cada dia de trabalho. Além de garantir a rastreabilidade técnica, ele possui <strong>alto valor jurídico</strong> para justificar prorrogações de prazo decorrentes de intempéries ou atrasos de fornecedores.</p>
+
+  <h2>O Formulário Completo do RDO (Passo a Passo)</h2>
+
+  <div class="steps-container avoid-break">
+    <div class="step-item">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <div class="step-title">Condições Climáticas (Tempo e Praticabilidade)</div>
+        <div class="step-desc">Informe o tempo nos períodos <strong>Manhã, Tarde e Noite</strong> (Ensolarado, Nublado, Chuvoso) e marque se a condição de trabalho estava <strong>Praticável ou Impraticável</strong>.</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <div class="step-title">Efetivo de Mão de Obra no Canteiro</div>
+        <div class="step-desc">Insira a quantidade de profissionais presentes por função (ex: 4 Pedreiros, 6 Serventes, 2 Armadores, 2 Eletricistas), separando a equipe própria dos subempreiteiros terceirizados.</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <div class="step-title">Equipamentos em Operação</div>
+        <div class="step-desc">Liste as máquinas presentes no canteiro (Betoneira, Grua, Retroescavadeira, Andaimes Fachadeiros) e indique se estavam <strong>Operando, Parados ou em Manutenção</strong>.</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">4</div>
+      <div class="step-content">
+        <div class="step-title">Atividades Executadas (Com Entrada por Voz!)</div>
+        <div class="step-desc">Descreva de forma clara os serviços realizados no dia.<br>
+        <strong>🎙️ Dica Pro:</strong> Toque no ícone do microfone para ditar o texto falando diretamente no celular!</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">5</div>
+      <div class="step-content">
+        <div class="step-title">Ocorrências, Visitas e Paralisações</div>
+        <div class="step-desc">Registre imprevistos como atraso na entrega de concreto usinado, falta de energia da concessionária ou visitas de fiscalização/clientes.</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">6</div>
+      <div class="step-content">
+        <div class="step-title">Fotos do Dia e Assinatura Digital</div>
+        <div class="step-desc">Tire fotos pelo celular direto na tela do RDO e adicione uma legenda. No final, assine com o dedo na tela de toque e envie para homologação do Engenheiro.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout tip avoid-break">
+    <div class="callout-title">📱 Dica de Ouro para o Canteiro</div>
+    O encarregado não precisa esperar o fim do dia para preencher tudo. Ele pode abrir o RDO pela manhã para registrar o clima e efetivo, atualizar as fotos durante a tarde e assinar o relatório às 17h.
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 8: CAPÍTULO 6 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 06 — Materiais & Almoxarifado</div>
+  </div>
+
+  <h1><span class="chapter-number">06</span> Gestão de Materiais & Almoxarifado</h1>
+
+  <p>A gestão eficiente de suprimentos evita que a obra pare por falta de insumos e impede desperdícios e compras em duplicidade. O RIGOR integra todo o fluxo: da requisição de campo ao controle de saldo em estoque.</p>
+
+  <h2>Fluxo Integrado de Suprimentos</h2>
+
+  <div class="fluxogram avoid-break">
+    <div class="fluxo-node">1. Requisição<br><small style="color: #64748B;">Mestre no Canteiro</small></div>
+    <div class="fluxo-arrow">➔</div>
+    <div class="fluxo-node">2. Aprovação<br><small style="color: #64748B;">Engenheiro / Gestor</small></div>
+    <div class="fluxo-arrow">➔</div>
+    <div class="fluxo-node">3. Compras / Cotação<br><small style="color: #64748B;">Setor de Compras</small></div>
+    <div class="fluxo-arrow">➔</div>
+    <div class="fluxo-node">4. Recebimento & NF<br><small style="color: #64748B;">Almoxarife na Obra</small></div>
+  </div>
+
+  <h2>Operações Principais no Módulo de Materiais</h2>
+
+  <div class="card-grid-2 avoid-break">
+    <div class="info-card">
+      <div class="info-card-header">
+        <span style="font-size: 16px;">📝</span>
+        <div class="info-card-title">Criar Requisição de Material</div>
+      </div>
+      <p class="info-card-text">
+        1. Acesse <strong>Materiais > Requisições</strong> e clique em <em>+ Nova Requisição</em>.<br>
+        2. Selecione o insumo (ex: <em>Cimento CP II - 50kg</em>), a quantidade desejada e a data limite de necessidade.<br>
+        3. A requisição entra com status <span class="badge badge-amber">Pendente</span> aguardando liberação.
+      </p>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <span style="font-size: 16px;">🚚</span>
+        <div class="info-card-title">Dar Entrada de Material (Nota Fiscal)</div>
+      </div>
+      <p class="info-card-text">
+        1. No recebimento do caminhão, acesse <strong>Materiais > Entradas</strong>.<br>
+        2. Informe o número da Nota Fiscal, fornecedor e quantidade conferida fisicamente.<br>
+        3. O sistema atualiza o <strong>Saldo de Estoque</strong> imediatamente e disponibiliza o insumo para uso.
+      </p>
+    </div>
+  </div>
+
+  <div class="card-grid-2 avoid-break">
+    <div class="info-card">
+      <div class="info-card-header">
+        <span style="font-size: 16px;">📉</span>
+        <div class="info-card-title">Baixa por Consumo na Obra</div>
+      </div>
+      <p class="info-card-text">
+        Ao retirar material do almoxarifado para aplicar na etapa (ex: 50 sacos de cimento para a concretagem do piso), registre uma <strong>Saída de Estoque</strong> vinculada à etapa correspondente.
+      </p>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <span style="font-size: 16px;">⚠️</span>
+        <div class="info-card-title">Registro de Perdas ou Avarias</div>
+      </div>
+      <p class="info-card-text">
+        Materiais danificados por chuva ou manuseio inadequado devem ser registrados como <strong>Perda</strong>, permitindo à diretoria apurar o índice real de perdas da construtora.
+      </p>
+    </div>
+  </div>
+
+  <div class="callout warning avoid-break">
+    <div class="callout-title">⚠️ Regra de Ouro do Almoxarifado</div>
+    Nunca receba mercadoria no canteiro sem conferir a quantidade física contra o espelho da Nota Fiscal antes de assinar o canhoto de entrega do motorista.
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 9: CAPÍTULO 7 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 07 — Financeiro, Contratos & Medições</div>
+  </div>
+
+  <h1><span class="chapter-number">07</span> Financeiro, Contratos & Medições</h1>
+
+  <p>O módulo financeiro do RIGOR conecta os eventos físicos do canteiro de obras ao fluxo de caixa da empresa, garantindo que pagamentos a fornecedores e empreiteiros ocorram somente mediante <strong>medição técnica aprovada</strong>.</p>
+
+  <h2>Gestão de Contratos e Empreiteiros</h2>
+  <p>Cadastre os contratos de subempreitada (ex: empresa de instalações elétricas, gesseiros, pintura) com escopo detalhado, valor global, cronograma de pagamentos e retenções contratuais.</p>
+
+  <h2>O Processo de Medição de Serviços (Passo a Passo)</h2>
+
+  <div class="steps-container avoid-break">
+    <div class="step-item">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <div class="step-title">Abertura da Medição Periódica (Quinzenal ou Mensal)</div>
+        <div class="step-desc">O encarregado ou engenheiro abre uma nova medição vinculada ao contrato do empreiteiro no menu <strong>Contratos > Medições</strong>.</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <div class="step-title">Apuração das Quantidades Executadas no Canteiro</div>
+        <div class="step-desc">Registra-se a metragem ou percentual realmente executado no período (ex: <em>450 m² de reboco interno</em>).</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <div class="step-title">Aprovação Técnica do Engenheiro Residente</div>
+        <div class="step-desc">O Engenheiro confere a qualidade do serviço e aprova a medição. Caso haja pendências, a medição pode ser ajustada ou reprovada.</div>
+      </div>
+    </div>
+
+    <div class="step-item">
+      <div class="step-number">4</div>
+      <div class="step-content">
+        <div class="step-title">Geração Automática do Contas a Pagar</div>
+        <div class="step-desc">Uma vez aprovada a medição, o sistema gera automaticamente o título no <strong>Financeiro (Contas a Pagar)</strong> com a data de vencimento pactuada.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Controle de Despesas e Receitas por Centro de Custos</h2>
+  <p>Cada lançamento financeiro fica atrelado à sua respectiva obra, permitindo consultar a qualquer momento:</p>
+  <ul class="checklist-ul avoid-break">
+    <li><strong>Custo Orçado vs. Custo Realizado</strong> por categoria de insumo (Material, Mão de Obra, Equipamentos).</li>
+    <li><strong>Extrato Financeiro da Obra:</strong> todas as entradas e saídas detalhadas com comprovantes anexos.</li>
+    <li><strong>Margem de Lucro e Desvios de Custo:</strong> identificação precoce de estouros orçamentários.</li>
+  </ul>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 10: CAPÍTULO 8 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 08 — Qualidade & Segurança (SGI)</div>
+  </div>
+
+  <h1><span class="chapter-number">08</span> Qualidade & Segurança do Trabalho</h1>
+
+  <p>O RIGOR atende aos requisitos do <strong>PBQP-H / ISO 9001</strong> e às Normas Regulamentadoras do Ministério do Trabalho (com ênfase na <strong>NR-18 e NR-35</strong>), garantindo canteiros organizados, seguros e padronizados.</p>
+
+  <h2>Módulo de Qualidade: FVS (Ficha de Verificação de Serviço)</h2>
+  <p>As FVS garantem que cada etapa construtiva seja inspecionada antes de ser liberada para a etapa seguinte:</p>
+
+  <div class="card-grid-2 avoid-break">
+    <div class="info-card">
+      <div class="info-card-header">
+        <span class="badge badge-green">✓</span>
+        <div class="info-card-title">Realizar Inspeção de Qualidade</div>
+      </div>
+      <p class="info-card-text">
+        1. Acesse <strong>Qualidade > Inspeções</strong> e selecione o tipo de serviço (Estrutura, Alvenaria, Hidráulica, etc.).<br>
+        2. Marque cada item do checklist como <strong>Conforme</strong>, <strong>Não Conforme</strong> ou <strong>N/A</strong>.<br>
+        3. Adicione fotos comprobatórias da vistoria.
+      </p>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <span class="badge badge-amber">⚠️</span>
+        <div class="info-card-title">Tratamento de Não Conformidades (NC)</div>
+      </div>
+      <p class="info-card-text">
+        Ao identificar uma falha (ex: desaprumo de pilar ou impermeabilização com bolhas):<br>
+        1. Abra uma <strong>NC</strong> definindo o responsável e o prazo para retrabalho.<br>
+        2. Após a correção, realize a reinspeção e encerre a não conformidade no sistema.
+      </p>
+    </div>
+  </div>
+
+  <h2>Módulo de Segurança do Trabalho (NR-18)</h2>
+
+  <div class="table-container avoid-break">
+    <table>
+      <thead>
+        <tr>
+          <th>Recurso de Segurança</th>
+          <th>Objetivo e Funcionamento</th>
+          <th>Periodicidade Recomendada</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>DDS (Diálogo Diário de Segurança)</strong></td>
+          <td>Registro do tema abordado com os operários no início da manhã, foto do grupo e lista de presença.</td>
+          <td>Diário (10 a 15 minutos antes do início dos trabalhos).</td>
+        </tr>
+        <tr>
+          <td><strong>Controle de EPIs</strong></td>
+          <td>Registro de entrega de capacetes, botas, cintos para trabalho em altura (NR-35) e óculos com termo assinado.</td>
+          <td>Na contratação e na substituição periódica.</td>
+        </tr>
+        <tr>
+          <td><strong>Controle de ASO e Treinamentos</strong></td>
+          <td>Alerta de vencimento de exames médicos admissionais/periódicos e certificados de NR-10, NR-35 e NR-18.</td>
+          <td>Contínuo com notificações automáticas.</td>
+        </tr>
+        <tr>
+          <td><strong>Comunicação de Incidentes</strong></td>
+          <td>Registro de quase-acidentes e incidentes para investigação de causa-raiz e melhoria contínua.</td>
+          <td>Imediata após qualquer ocorrência.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 11: CAPÍTULO 9 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 09 — Documentos, Galeria & Equipe</div>
+  </div>
+
+  <h1><span class="chapter-number">09</span> Documentos, Galeria & Equipe</h1>
+
+  <h2>Gestão Eletrônica de Documentos (GED da Obra)</h2>
+  <p>Evite a utilização de plantas desatualizadas no canteiro. O módulo de <strong>Documentos</strong> centraliza os arquivos técnicos com controle de versão e alertas de validade:</p>
+
+  <div class="card-grid-3 avoid-break">
+    <div class="info-card">
+      <div class="info-card-header">
+        <span style="font-size: 16px;">📐</span>
+        <div class="info-card-title">Projetos Executivos</div>
+      </div>
+      <p class="info-card-text">Armazene projetos de Arquitetura, Estrutura, Elétrica e Hidráulica (PDF e DWG) sempre na versão mais recente aprovada para execução.</p>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <span style="font-size: 16px;">📑</span>
+        <div class="info-card-title">Licenças e Alvarás</div>
+      </div>
+      <p class="info-card-text">Alvará de Construção, Licença Ambiental, ART/RRT e Apólice de Seguro de Risco de Engenharia com data de vencimento monitorada.</p>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-header">
+        <span style="font-size: 16px;">🧾</span>
+        <div class="info-card-title">Notas e Certificados</div>
+      </div>
+      <p class="info-card-text">Laudos de rompimento de corpos de prova de concreto (Fck), certificados de aço e notas fiscais de materiais homologados.</p>
+    </div>
+  </div>
+
+  <h2>Galeria Fotográfica da Obra</h2>
+  <p>A <strong>Galeria</strong> organiza o acervo visual da obra de maneira cronológica. As fotos inseridas nos RDOs e nas inspeções de qualidade ficam disponíveis em alta resolução para:</p>
+  <ul class="checklist-ul avoid-break">
+    <li>Acompanhamento da evolução estrutural ao longo dos meses.</li>
+    <li>Comprovação de serviços embutidos antes do fechamento de alvenarias (ex: tubulações hidrossanitárias).</li>
+    <li>Geração de relatórios fotográficos para envio aos clientes e investidores.</li>
+  </ul>
+
+  <h2>Gerenciamento de Equipe e Novos Usuários</h2>
+  <p>Administradores e Engenheiros podem convidar novos colaboradores a qualquer momento acessando o menu <strong>Equipe</strong>:</p>
+  <div class="steps-container avoid-break">
+    <div class="step-item">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <div class="step-title">Clique em "+ Convidar Membro"</div>
+        <div class="step-desc">Informe o nome completo, e-mail e cargo do colaborador.</div>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <div class="step-title">Defina o Perfil de Acesso</div>
+        <div class="step-desc">Selecione o papel correto (Engenheiro, Encarregado, Almoxarife, Financeiro) e as obras em que ele atuará.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- PÁGINA 12: CAPÍTULO 10 -->
+  <!-- ========================================================= -->
+  <div class="page-break"></div>
+  <div class="page-header">
+    <div class="doc-name"><span></span> RIGOR — Manual do Usuário</div>
+    <div>Capítulo 10 — Guia de Bolso & FAQ</div>
+  </div>
+
+  <h1><span class="chapter-number">10</span> Rotina Diária Recomendada & FAQ</h1>
+
+  <p>Para garantir que a plataforma funcione com máxima eficiência, adote o seguinte roteiro diário na sua construtora:</p>
+
+  <div class="card-grid-3 avoid-break">
+    <div class="info-card" style="border-top: 3px solid var(--accent-blue);">
+      <div class="info-card-title">🌅 Início da Manhã (07h00 - 08h00)</div>
+      <p class="info-card-text" style="margin-top: 6px;">
+        • Realizar o DDS com a equipe e registrar a foto.<br>
+        • Abrir o RDO do dia e registrar a condição do tempo e o efetivo presente.<br>
+        • Distribuir as tarefas do dia com base no cronograma.
+      </p>
+    </div>
+
+    <div class="info-card" style="border-top: 3px solid var(--warning);">
+      <div class="info-card-title">☀️ Meio do Dia (11h30 - 14h00)</div>
+      <p class="info-card-text" style="margin-top: 6px;">
+        • Conferir recebimento de materiais e dar entrada no almoxarifado.<br>
+        • Realizar inspeções de qualidade (FVS) das etapas prontas.<br>
+        • Registrar o tempo no período da tarde no RDO.
+      </p>
+    </div>
+
+    <div class="info-card" style="border-top: 3px solid var(--success);">
+      <div class="info-card-title">🌆 Fim de Tarde (16h30 - 17h30)</div>
+      <p class="info-card-text" style="margin-top: 6px;">
+        • Concluir o texto das atividades realizadas no RDO (usando a voz).<br>
+        • Anexar 3 a 5 fotos do progresso do dia.<br>
+        • Assinar o RDO e enviar para homologação do Engenheiro.
+      </p>
+    </div>
+  </div>
+
+  <h2>Perguntas Frequentes (FAQ)</h2>
+
+  <div class="avoid-break" style="margin-top: 10px;">
+    <p><strong>1. Posso usar o sistema no celular sem sinal de internet no canteiro?</strong><br>
+    <span style="color: #475569; font-size: 11.5px;">Sim! A interface é otimizada para conexões móveis. Caso o sinal oscile, você pode tirar as fotos na câmera normal do celular e anexá-las no sistema assim que reconectar.</span></p>
+
+    <p><strong>2. O que acontece se eu esquecer de preencher o RDO em um determinado dia?</strong><br>
+    <span style="color: #475569; font-size: 11.5px;">O sistema permite ao Engenheiro ou Administrador autorizar o lançamento retroativo, porém com registro de auditoria do horário real em que a informação foi gravada.</span></p>
+
+    <p><strong>3. Como faço para emitir o PDF oficial do RDO para apresentar ao cliente?</strong><br>
+    <span style="color: #475569; font-size: 11.5px;">Acesse <strong>RDO</strong>, clique no relatório do dia desejado e clique no botão <strong>"Exportar PDF"</strong>. O sistema gera um documento timbrado com o logo da sua construtora, assinaturas digitais e fotos organizadas.</span></p>
+
+    <p><strong>4. Esqueci minha senha. Como recupero meu acesso?</strong><br>
+    <span style="color: #475569; font-size: 11.5px;">Na tela de login, clique em <em>"Esqueci minha senha"</em> para receber um link de redefinição no seu e-mail, ou solicite ao Administrador da sua empresa uma nova senha temporária.</span></p>
+  </div>
+
+  <div class="callout success avoid-break" style="margin-top: 16px;">
+    <div class="callout-title">🤝 Suporte Técnico Especializado</div>
+    Nossa equipe de suporte está à sua disposição para tirar dúvidas, realizar treinamentos ou auxiliar na importação de seus cronogramas.<br>
+    <strong>E-mail:</strong> suporte@rigorobras.com.br | <strong>WhatsApp de Atendimento:</strong> (11) 99999-9999
+  </div>
+
+</body>
+</html>
+`;
+
+fs.writeFileSync(htmlFilePath, fullHtml, 'utf-8');
+console.log('HTML completo gerado em:', htmlFilePath);
+
+const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const compileCommand = `"${chromePath}" --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf="${pdfFilePathDocs}" "${htmlFilePath}"`;
+
+console.log('Gerando PDF com Chrome Headless...');
+try {
+  execSync(compileCommand, { stdio: 'inherit' });
+  if (fs.existsSync(pdfFilePathDocs)) {
+    const sizeKb = (fs.statSync(pdfFilePathDocs).size / 1024).toFixed(1);
+    console.log(`✓ PDF gerado com sucesso em: ${pdfFilePathDocs} (${sizeKb} KB)`);
+    fs.copyFileSync(pdfFilePathDocs, pdfFilePathRoot);
+    console.log(`✓ Cópia do PDF sincronizada na raiz do projeto: ${pdfFilePathRoot}`);
+  }
+} catch (e) {
+  console.error('Erro na compilação do PDF:', e);
+}

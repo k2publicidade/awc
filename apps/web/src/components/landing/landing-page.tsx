@@ -514,9 +514,9 @@ export function LandingPage() {
                 <Link href="/login" className={styles.loginBtn}>
                   Entrar
                 </Link>
-                <a href="#planos" className={styles.headerCta}>
-                  Solicitar Demonstração <ArrowRight className="h-3.5 w-3.5" />
-                </a>
+                <Link href="/register" className={styles.headerCta}>
+                  Testar 10 Dias Grátis <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </>
             )}
           </div>
@@ -587,9 +587,9 @@ export function LandingPage() {
             </p>
 
             <div className={styles.heroActions}>
-              <a href="#planos" className={styles.heroPrimaryCta}>
-                Agendar Demonstração Guiada <ArrowRight className="h-4 w-4" />
-              </a>
+              <Link href="/register" className={styles.heroPrimaryCta}>
+                Testar 10 Dias Grátis <ArrowRight className="h-4 w-4" />
+              </Link>
               <a href="#plataforma" className={styles.heroSecondaryCta}>
                 Explorar Plataforma <ChevronRight className="h-4 w-4" />
               </a>
@@ -1465,16 +1465,16 @@ export function LandingPage() {
                     </ul>
                   </div>
 
-                  <a
-                    href={`mailto:comercial@rigorobras.com.br?subject=Interesse no plano ${plan.name} (${cycle.label})`}
+                  <Link
+                    href={`/register?plan=${key}`}
                     className={
                       isPro
                         ? 'mt-6 flex h-12 items-center justify-center gap-2 rounded bg-[#0066FF] text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-[#0066FF]/40 transition hover:brightness-110'
                         : 'mt-6 flex h-12 items-center justify-center gap-2 rounded border border-[#23394E] bg-white text-xs font-black uppercase tracking-wider text-[#08131E] transition hover:bg-[#08131E] hover:text-white'
                     }
                   >
-                    Solicitar Demonstração <ArrowRight className="h-4 w-4" />
-                  </a>
+                    Testar 10 Dias Grátis <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
               );
             })}
@@ -1549,12 +1549,12 @@ export function LandingPage() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <a
-                href="mailto:comercial@rigorobras.com.br?subject=Quero agendar uma demonstração do RIGOR"
+              <Link
+                href="/register"
                 className="flex h-13 items-center justify-center gap-2 rounded bg-[#0066FF] text-xs font-black uppercase tracking-wider text-white shadow-xl shadow-[#0066FF]/40 transition hover:brightness-110"
               >
-                Agendar Demonstração Guiada <ArrowRight className="h-4 w-4" />
-              </a>
+                Criar Conta e Testar 10 Dias Grátis <ArrowRight className="h-4 w-4" />
+              </Link>
               <Link
                 href="/login"
                 className="flex h-13 items-center justify-center gap-2 rounded border border-[#23394E] bg-[#08131E] text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#112030]"

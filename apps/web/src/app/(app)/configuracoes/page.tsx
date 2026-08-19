@@ -331,7 +331,8 @@ export default function ConfiguracoesPage() {
                     name="password"
                     type="password"
                     required
-                    minLength={6}
+                    minLength={8}
+                    placeholder="Mín. 8 caracteres (letras e números)"
                     className="mt-1 h-10 w-full rounded-md border border-slate-200 px-3 text-sm font-normal outline-none focus:border-rigor-orange"
                   />
                 </label>

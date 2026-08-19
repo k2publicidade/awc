@@ -123,7 +123,7 @@ export function TenantManager({ tenants }: { tenants: TenantRow[] }) {
                   <label className="master-field">
                     <span>Status comercial</span>
                     <select name="subscriptionStatus" className="master-input" defaultValue="TRIAL">
-                      <option value="TRIAL">Trial — 14 dias</option>
+                      <option value="TRIAL">Trial — 10 dias</option>
                       <option value="ATIVA">Ativa</option>
                       <option value="INADIMPLENTE">Inadimplente</option>
                     </select>

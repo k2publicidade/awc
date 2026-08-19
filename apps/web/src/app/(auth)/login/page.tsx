@@ -13,8 +13,7 @@ import { Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { RigorLogo, RigorMark } from '@/components/ui/rigor-logo';
 
 function LoginForm() {
-  const publicSignupEnabled =
-    process.env.NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP === 'true' || process.env.NODE_ENV !== 'production';
+  const publicSignupEnabled = process.env.NEXT_PUBLIC_ALLOW_PUBLIC_SIGNUP !== 'false';
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get('callbackUrl');
@@ -208,7 +207,7 @@ function LoginForm() {
                 <>
                   Ainda não usa o RIGOR?{' '}
                   <Link href="/register" className="font-black text-[#1687FF] hover:underline">
-                    Crie sua empresa e teste por 14 dias
+                    Crie sua empresa e teste por 10 dias
                   </Link>
                   .
                 </>

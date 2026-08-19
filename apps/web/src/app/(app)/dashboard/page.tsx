@@ -13,6 +13,7 @@ import {
   FileText,
   Plus,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -157,8 +158,48 @@ export default async function DashboardPage() {
   const riscoDe = (o: ObraRow) =>
     temEtapaAtrasada(o) ? 'Atrasada' : avanco(o) < previsto(o) - 10 ? 'Atenção' : 'No prazo';
 
+  const isTrial = context.tenant?.subscriptionStatus === 'TRIAL';
+  const trialDaysRemaining =
+    isTrial && context.tenant?.trialEndsAt
+      ? Math.max(0, Math.ceil((new Date(context.tenant.trialEndsAt).getTime() - hoje.getTime()) / 86400000))
+      : null;
+
   return (
     <div className="mx-auto w-full max-w-[1540px] space-y-6 pb-8 text-[#1e293b]">
+      {isTrial && (
+        <div className="relative overflow-hidden rounded-2xl border border-[#1687FF]/30 bg-gradient-to-r from-[#0B1F33] via-[#0D253D] to-[#071524] p-4 sm:p-5 text-white shadow-lg">
+          <div className="absolute right-0 top-0 h-40 w-40 translate-x-1/4 -translate-y-1/4 rounded-full bg-[#1687FF]/20 blur-2xl" />
+          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#1687FF]/20 text-[#1687FF] border border-[#1687FF]/30">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-[#1687FF] px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+                    Teste Gratuito
+                  </span>
+                  <span className="text-xs font-semibold text-slate-300">
+                    {trialDaysRemaining !== null && trialDaysRemaining > 0
+                      ? `${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'dia restante' : 'dias restantes'}`
+                      : 'Período de avaliação finalizado'}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm font-bold text-white">
+                  Aproveite acesso completo a todos os recursos do RIGOR durante seus 10 dias de avaliação.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/empresa"
+              className="rigor-btn-primary inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-5 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all hover:brightness-110"
+            >
+              Conhecer Planos & Assinar
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">

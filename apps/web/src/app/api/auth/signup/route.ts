@@ -6,7 +6,7 @@ import { slugifyCompany } from '@/lib/saas';
 import { LEGAL_VERSION } from '@/lib/billing';
 
 export async function POST(request: NextRequest) {
-  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PUBLIC_SIGNUP !== 'true') {
+  if (process.env.ALLOW_PUBLIC_SIGNUP === 'false') {
     return NextResponse.json(
       { error: 'Cadastro por autoatendimento temporariamente fechado. Fale com a equipe RIGOR.' },
       { status: 403 }
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       slug = `${baseSlug}-${suffix}`;
 
     const passwordHash = await bcrypt.hash(data.password, 12);
-    const trialEndsAt = new Date(Date.now() + 14 * 86400000);
+    const trialEndsAt = new Date(Date.now() + 10 * 86400000);
     const result = await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
