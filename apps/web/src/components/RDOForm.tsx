@@ -18,6 +18,7 @@ import { createWatermarkedEvidence, type EvidenceLocation } from '@/lib/photo-ev
 import { VoiceInputButton } from '@/components/voice-input-button';
 import { useObra } from '@/hooks/use-obra';
 import { useAuth } from '@/hooks/use-auth';
+import { SignatureModal } from '@/components/signature-modal';
 import {
   Building2,
   Cloud,
@@ -28,6 +29,7 @@ import {
   ClipboardList,
   Camera,
   Pen,
+  PenTool,
   Trash2,
   Plus,
   ChevronDown,
@@ -117,12 +119,12 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Assinatura
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [assinado, setAssinado] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [crea, setCrea] = useState('');
   const [nomeAssinatura, setNomeAssinatura] = useState('');
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
 
   // Load obras and engineers on mount
   useEffect(() => {
@@ -190,6 +192,11 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         setRdoNumero(String(rdo.numero || ''));
         setCrea(rdo.assinaturaCrea || '');
         setNomeAssinatura(rdo.assinaturaNome || '');
+        if (rdo.assinaturaBase64 || rdo.assinaturaImagem) {
+          const sig = rdo.assinaturaBase64 || rdo.assinaturaImagem;
+          setSignatureData(sig);
+          setAssinado(true);
+        }
         setConfirmado(rdo.status === 'APROVADO');
 
         // Clima
@@ -327,63 +334,6 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
     setFotos(fotos.filter((f) => f.id !== id));
   };
 
-  // Canvas signature
-  const getCanvasPos = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
-  ) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    if ('touches' in e) {
-      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-    }
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  };
-
-  const startDrawing = (
-    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
-  ) => {
-    setIsDrawing(true);
-    const { x, y } = getCanvasPos(e);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const { x, y } = getCanvasPos(e);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setAssinado(true);
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
-  const clearSignature = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setAssinado(false);
-  };
-
-  const getSignatureDataUrl = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    return canvas.toDataURL('image/png');
-  };
-
   const mapClimaToEnum = (clima: string) => {
     const map: Record<string, string> = {
       sol: 'ENSOLARADO',
@@ -411,7 +361,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
         temperaturaTarde: tempTarde ? parseFloat(tempTarde) : undefined,
         assinaturaNome: nomeAssinatura || engenheiro,
         assinaturaCrea: crea || undefined,
-        assinaturaImagem: assinado ? getSignatureDataUrl() : undefined,
+        assinaturaImagem: signatureData || undefined,
         status,
         observacoes: `RDO gerado em ${new Date().toLocaleDateString('pt-BR')} - ${atividades.length} atividades, ${efetivo.length} funções`,
       };
@@ -1188,81 +1138,144 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
             titulo="ASSINATURA DIGITAL"
             icone={<Pen className="h-5 w-5 text-[#ff5a00]" />}
           >
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-4">
-              <div className="relative">
-                <canvas
-                  ref={canvasRef}
-                  width={300}
-                  height={120}
-                  onMouseDown={startDrawing}
-                  onMouseMove={draw}
-                  onMouseUp={stopDrawing}
-                  onMouseLeave={stopDrawing}
-                  onTouchStart={startDrawing}
-                  onTouchMove={draw}
-                  onTouchEnd={stopDrawing}
-                  className="w-full h-[120px] rounded-[6px] border border-dashed border-[#d1d5db] bg-[#f9fafb] touch-none"
-                  style={{ cursor: 'crosshair' }}
-                />
-                {!assinado && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="flex flex-col items-center text-[#9aa3ad]">
-                      <Pen className="h-5 w-5 mb-1" />
-                      <span className="text-[12px]">Assine aqui</span>
+            <div className="grid grid-cols-1 md:grid-cols-[1.25fr_1fr] gap-5 items-start">
+              {/* Área da Assinatura (Preview ou Botão de Assinar) */}
+              <div>
+                <label className="block text-[12px] font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+                  <span>Assinatura do Responsável</span>
+                  {signatureData && (
+                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                      <Check className="h-3 w-3" /> Assinado Digitalmente
                     </span>
+                  )}
+                </label>
+
+                {signatureData ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div className="relative h-32 w-full rounded-lg border border-slate-200/80 bg-white flex items-center justify-center overflow-hidden shadow-inner">
+                      {/* Imagem da assinatura */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={signatureData}
+                        alt="Assinatura Digital"
+                        className="max-h-full max-w-full object-contain p-2"
+                      />
+                      {/* Linha guia estética */}
+                      <div className="pointer-events-none absolute bottom-4 left-6 right-6 flex items-center gap-2 opacity-30">
+                        <span className="text-[10px] font-serif font-bold text-slate-400">X</span>
+                        <div className="h-[1px] flex-1 bg-slate-300" />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-500 font-medium truncate max-w-[180px]">
+                        {nomeAssinatura || engenheiro || 'Responsável'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSignatureModalOpen(true)}
+                          className="h-8 px-2.5 text-xs text-slate-700 hover:text-[#ff5a00] hover:border-[#ff5a00]/40"
+                        >
+                          <PenTool className="h-3.5 w-3.5 mr-1" />
+                          Alterar
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSignatureData(null);
+                            setAssinado(false);
+                          }}
+                          className="h-8 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div className="flex gap-2 mt-2">
-                  <Button
-                    onClick={clearSignature}
-                    variant="outline"
-                    size="sm"
-                    className="text-[11px] h-7"
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSignatureModalOpen(true)}
+                    className="group relative flex h-36 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 p-4 text-center transition-all hover:border-[#ff5a00] hover:bg-[#fff7f0]"
                   >
-                    Limpar
-                  </Button>
-                </div>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 group-hover:bg-[#ff5a00] group-hover:text-white transition-all">
+                      <PenTool className="h-5 w-5 text-slate-600 group-hover:text-white transition-colors" />
+                    </div>
+                    <p className="mt-2 text-[13px] font-bold text-slate-800 group-hover:text-[#ff5a00] transition-colors">
+                      Clique para assinar digitalmente
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      Abre janela ampla para desenhar com mouse ou touch
+                    </p>
+                  </button>
+                )}
               </div>
-              <div className="space-y-3">
+
+              {/* Detalhes do Signatário */}
+              <div className="space-y-3.5 bg-slate-50/60 p-4 rounded-xl border border-slate-200/70">
                 <div>
-                  <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">
-                    CREA
+                  <label className="block text-[12px] font-medium text-[#64707c] mb-1">
+                    CREA / Registro Profissional
                   </label>
                   <Input
                     value={crea}
                     onChange={(e) => setCrea(e.target.value)}
-                    placeholder="CREA/SP 123456-D"
-                    className="h-[42px] bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px]"
+                    placeholder="Ex: CREA/SP 123456-D"
+                    className="h-[40px] bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-[#64707c] mb-1.5">
-                    Nome
+                  <label className="block text-[12px] font-medium text-[#64707c] mb-1">
+                    Nome do Responsável
                   </label>
                   <Input
                     value={nomeAssinatura}
                     onChange={(e) => setNomeAssinatura(e.target.value)}
-                    placeholder="Nome do responsável"
-                    className="h-[42px] bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px]"
+                    placeholder="Nome completo do responsável"
+                    className="h-[40px] bg-white border-[#e5e7eb] text-[13px] text-[#374151] rounded-[6px]"
                   />
                 </div>
               </div>
             </div>
-            <div className="mt-4 flex items-center gap-2">
+
+            {/* Termo de Confirmação */}
+            <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-start gap-3">
               <button
+                type="button"
                 onClick={() => setConfirmado(!confirmado)}
                 className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded border-2 transition',
-                  confirmado ? 'border-[#ff5a00] bg-[#ff5a00]' : 'border-[#d1d5db] bg-white'
+                  'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition',
+                  confirmado ? 'border-[#ff5a00] bg-[#ff5a00]' : 'border-[#d1d5db] bg-white hover:border-slate-400'
                 )}
               >
                 {confirmado && <Check className="h-3 w-3 text-white" />}
               </button>
-              <span className="text-[12px] text-[#64707c]">
-                Confirmo que as informações acima são verdadeiras
-              </span>
+              <label
+                onClick={() => setConfirmado(!confirmado)}
+                className="text-[12px] leading-snug text-[#64707c] select-none cursor-pointer"
+              >
+                Confirmo que as informações meteorológicas, efetivo, atividades e ocorrências registradas neste RDO são verídicas.
+              </label>
             </div>
           </Card>
+
+          {/* Modal de Assinatura Digital Profissional */}
+          <SignatureModal
+            open={signatureModalOpen}
+            onOpenChange={setSignatureModalOpen}
+            onSave={(dataUrl) => {
+              setSignatureData(dataUrl);
+              setAssinado(true);
+            }}
+            initialSignature={signatureData}
+            signeeName={nomeAssinatura || engenheiro}
+            signeeCrea={crea}
+            documentTitle={`RDO — ${obraNome || 'Obra'} (${data || 'Data'})`}
+          />
         </div>
       </div>
 
