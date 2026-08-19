@@ -33,7 +33,16 @@ async function addDefaults(
   opts: { tenantId: string; userId: string }
 ) {
   const { tenantId, userId } = opts;
-  const obraId = data.obraId || (await firstId('obra', tenantId ? { tenantId } : undefined));
+  const userObraWhere = tenantId
+    ? {
+        tenantId,
+        OR: [
+          { engenheiroId: userId },
+          { clienteId: userId },
+        ],
+      }
+    : undefined;
+  const obraId = data.obraId || (await firstId('obra', userObraWhere));
   if (
     ['obras', 'materiais', 'equipe', 'equipes', 'fornecedores', 'notificacoes'].includes(
       resourceKey
@@ -46,6 +55,7 @@ async function addDefaults(
     data.codigo ||= `OBR-${Date.now()}`;
     data.tipo ||= 'GALPAO';
     data.status ||= 'PLANEJAMENTO';
+    data.engenheiroId ||= userId;
   }
   if (resourceKey === 'etapas') {
     data.obraId ||= obraId;

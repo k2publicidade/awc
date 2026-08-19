@@ -12,6 +12,10 @@ export async function POST(req: NextRequest) {
   const userId = context.userId;
 
   const body = await req.json();
+  const { tenantOwnsObra } = await import('@/lib/authorization');
+  if (!(await tenantOwnsObra(body.obraId, context.tenantId, context.userId, context.role))) {
+    return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
+  }
   await assertTenantRelations({ obraId: body.obraId }, context.tenantId);
   for (const item of body.itens || [])
     await assertTenantRelations({ etapaId: item.etapaId }, context.tenantId);
@@ -39,8 +43,19 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const body = await req.json();
+  const userObraScope =
+    context.role === 'MASTER_ADMIN'
+      ? { tenantId: context.tenantId }
+      : {
+          tenantId: context.tenantId,
+          OR: [
+            { engenheiroId: context.userId },
+            { clienteId: context.userId },
+          ],
+        };
+
   const existing = await prisma.medicao.findFirst({
-    where: { id: body.id, obra: { tenantId: context.tenantId } },
+    where: { id: body.id, obra: userObraScope },
     select: { id: true },
   });
   if (!existing) return NextResponse.json({ error: 'Medição não encontrada' }, { status: 404 });

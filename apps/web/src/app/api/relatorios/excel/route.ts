@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   const resource = resourceByType[type];
   if (!resource || !canAccessResource(context.role, resource))
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
-  if (!(await tenantOwnsObra(obraId, context.tenantId)))
+  if (!(await tenantOwnsObra(obraId, context.tenantId, context.userId, context.role)))
     return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
 
   if (type === 'orcamento') {

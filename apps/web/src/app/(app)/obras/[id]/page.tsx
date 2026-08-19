@@ -74,9 +74,20 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const context = await requireSession();
   if (!context || !canAccessResource(context.role, 'obras')) notFound();
+  const { tenantId, userId, role } = context;
+  const userObraScope =
+    role === 'MASTER_ADMIN'
+      ? { tenantId }
+      : {
+          tenantId,
+          OR: [
+            { engenheiroId: userId },
+            { clienteId: userId },
+          ],
+        };
 
   const obra = await prisma.obra.findFirst({
-    where: { id, tenantId: context.tenantId },
+    where: { id, ...userObraScope },
     include: {
       engenheiro: { select: { id: true, name: true, email: true } },
       cliente: { select: { id: true, name: true, email: true } },

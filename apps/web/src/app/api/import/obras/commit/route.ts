@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
       const obra = await tx.obra.create({
         data: {
           tenantId: context.tenantId,
+          engenheiroId: context.userId,
           nome: input.obra.nome,
           codigo: input.obra.codigo,
           tipo: input.obra.tipo,

@@ -59,15 +59,50 @@ export function resourceTenantWhere(
   userId?: string,
   role?: string
 ): DynamicValue {
-  if (resource === 'notificacoes') {
-    return ['ADMIN', 'SUPER_ADMIN'].includes(role || '') ? { tenantId } : { tenantId, userId };
+  if (role === 'MASTER_ADMIN') {
+    if (['obras', 'materiais', 'equipe', 'equipes', 'fornecedores', 'notificacoes'].includes(resource)) {
+      return { tenantId };
+    }
+    if (resource === 'equipeMembros') return { equipe: { tenantId } };
+    if (['epis', 'treinamentos'].includes(resource)) return { trabalhador: { tenantId } };
+    return { obra: { tenantId } };
   }
-  if (['obras', 'materiais', 'equipe', 'equipes', 'fornecedores', 'notificacoes'].includes(resource)) {
+
+  const userObraScope: DynamicValue = userId
+    ? {
+        tenantId,
+        OR: [
+          { engenheiroId: userId },
+          { clienteId: userId },
+        ],
+      }
+    : { tenantId };
+
+  if (resource === 'notificacoes') {
+    return { tenantId, userId };
+  }
+
+  if (resource === 'obras') {
+    return userObraScope;
+  }
+
+  if (resource === 'equipeMembros') {
+    return { equipe: { obra: userObraScope } };
+  }
+
+  if (resource === 'equipes') {
+    return { obra: userObraScope };
+  }
+
+  if (['epis', 'treinamentos'].includes(resource)) {
+    return { trabalhador: { tenantId } };
+  }
+
+  if (['materiais', 'fornecedores'].includes(resource)) {
     return { tenantId };
   }
-  if (resource === 'equipeMembros') return { equipe: { tenantId } };
-  if (['epis', 'treinamentos'].includes(resource)) return { trabalhador: { tenantId } };
-  return { obra: { tenantId } };
+
+  return { obra: userObraScope };
 }
 
 export function scopedWhere(scope: DynamicValue, where: DynamicValue = {}) {
@@ -123,6 +158,28 @@ export async function tenantOwnsResource(
   });
 }
 
-export async function tenantOwnsObra(obraId: string, tenantId: string) {
-  return prisma.obra.findFirst({ where: { id: obraId, tenantId }, select: { id: true } });
+export async function tenantOwnsObra(
+  obraId: string,
+  tenantId: string,
+  userId?: string,
+  role?: string
+) {
+  if (role === 'MASTER_ADMIN') {
+    return prisma.obra.findFirst({ where: { id: obraId, tenantId }, select: { id: true } });
+  }
+  return prisma.obra.findFirst({
+    where: {
+      id: obraId,
+      tenantId,
+      ...(userId
+        ? {
+            OR: [
+              { engenheiroId: userId },
+              { clienteId: userId },
+            ],
+          }
+        : {}),
+    },
+    select: { id: true },
+  });
 }

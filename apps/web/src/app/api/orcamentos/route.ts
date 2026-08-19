@@ -11,7 +11,18 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const obraId = searchParams.get('obraId');
-  const where: DynamicValue = { obra: { tenantId: context.tenantId } };
+  const userObraScope =
+    context.role === 'MASTER_ADMIN'
+      ? { tenantId: context.tenantId }
+      : {
+          tenantId: context.tenantId,
+          OR: [
+            { engenheiroId: context.userId },
+            { clienteId: context.userId },
+          ],
+        };
+
+  const where: DynamicValue = { obra: userObraScope };
   if (obraId) where.obraId = obraId;
 
   const orcamentos = await prisma.orcamento.findMany({
@@ -33,6 +44,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
   const body = await req.json();
+  const { tenantOwnsObra } = await import('@/lib/authorization');
+  if (!(await tenantOwnsObra(body.obraId, context.tenantId, context.userId, context.role))) {
+    return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
+  }
   await assertTenantRelations({ obraId: body.obraId }, context.tenantId);
   const orcamento = await prisma.orcamento.create({
     data: {

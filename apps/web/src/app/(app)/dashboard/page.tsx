@@ -67,8 +67,17 @@ function StatCard({
 export default async function DashboardPage() {
   const context = await requireSession();
   if (!context) redirect('/login');
-  const { tenantId, userId } = context;
-  const obraWhere = { tenantId };
+  const { tenantId, userId, role } = context;
+  const obraWhere =
+    role === 'MASTER_ADMIN'
+      ? { tenantId }
+      : {
+          tenantId,
+          OR: [
+            { engenheiroId: userId },
+            { clienteId: userId },
+          ],
+        };
 
   const hoje = new Date();
   const inicioHoje = new Date(hoje);

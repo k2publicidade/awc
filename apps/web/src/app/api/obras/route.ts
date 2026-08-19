@@ -16,7 +16,18 @@ export async function GET(req: NextRequest) {
   const tipo = searchParams.get('tipo');
   const search = searchParams.get('search');
 
-  const where: DynamicValue = { tenantId };
+  const userObraScope =
+    context.role === 'MASTER_ADMIN'
+      ? { tenantId }
+      : {
+          tenantId,
+          OR: [
+            { engenheiroId: context.userId },
+            { clienteId: context.userId },
+          ],
+        };
+
+  const where: DynamicValue = { ...userObraScope };
   if (status) where.status = status;
   if (tipo) where.tipo = tipo;
   if (search) where.nome = { contains: search, mode: 'insensitive' };
@@ -89,7 +100,9 @@ export async function POST(req: NextRequest) {
   if (!nome || !codigo || !tipo)
     return NextResponse.json({ error: 'Nome, código e tipo são obrigatórios' }, { status: 400 });
 
-  await assertTenantRelations({ engenheiroId, clienteId }, tenantId);
+  const resolvedEngenheiroId = engenheiroId || context.userId;
+
+  await assertTenantRelations({ engenheiroId: resolvedEngenheiroId, clienteId }, tenantId);
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
@@ -118,7 +131,7 @@ export async function POST(req: NextRequest) {
       valorContratado: valorContratado ? parseFloat(valorContratado) : 0,
       dataInicio: dataInicio ? new Date(dataInicio) : null,
       dataPrevisaoFim: dataPrevisaoFim ? new Date(dataPrevisaoFim) : null,
-      engenheiroId: engenheiroId || null,
+      engenheiroId: resolvedEngenheiroId,
       clienteId: clienteId || null,
       descricao: descricao || null,
       tenantId,

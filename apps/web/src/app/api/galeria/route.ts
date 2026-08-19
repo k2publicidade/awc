@@ -13,7 +13,17 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const obraId = searchParams.get('obraId');
   const etapaId = searchParams.get('etapaId');
-  const where: DynamicValue = { obra: { tenantId: context.tenantId } };
+  const userObraScope =
+    context.role === 'MASTER_ADMIN'
+      ? { tenantId: context.tenantId }
+      : {
+          tenantId: context.tenantId,
+          OR: [
+            { engenheiroId: context.userId },
+            { clienteId: context.userId },
+          ],
+        };
+  const where: DynamicValue = { obra: userObraScope };
   if (obraId) where.obraId = obraId;
   if (etapaId) where.etapaId = etapaId;
 
@@ -35,6 +45,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   if (!isManagedUploadUrl(body.url, context.tenantId)) {
     return NextResponse.json({ error: 'Envie a imagem pelo seletor do sistema' }, { status: 400 });
+  }
+  const { tenantOwnsObra } = await import('@/lib/authorization');
+  if (!(await tenantOwnsObra(body.obraId, context.tenantId, context.userId, context.role))) {
+    return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
   }
   await assertTenantRelations(
     { obraId: body.obraId, etapaId: body.etapaId, rdoId: body.rdoId },

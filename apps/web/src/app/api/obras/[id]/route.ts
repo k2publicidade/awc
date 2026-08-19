@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireSession } from '@/lib/session-context';
-import { assertTenantRelations } from '@/lib/authorization';
+import { assertTenantRelations, tenantOwnsObra } from '@/lib/authorization';
 import { deleteObraCascade } from '@/lib/cascade-delete';
 
 /** GET /api/obras/[id] */
@@ -9,6 +9,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const context = await requireSession();
   if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+
+  const isOwner = await tenantOwnsObra(id, context.tenantId, context.userId, context.role);
+  if (!isOwner) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
 
   const obra = await prisma.obra.findFirst({
     where: { id, tenantId: context.tenantId },
@@ -32,11 +35,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const context = await requireSession(['SUPER_ADMIN', 'ADMIN', 'ENGENHEIRO']);
   if (!context) return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
-  const existing = await prisma.obra.findFirst({
-    where: { id, tenantId: context.tenantId },
-    select: { id: true },
-  });
-  if (!existing) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
+  const isOwner = await tenantOwnsObra(id, context.tenantId, context.userId, context.role);
+  if (!isOwner) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
 
   const body = await req.json();
   const allowed = [
@@ -60,11 +60,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const context = await requireSession(['SUPER_ADMIN', 'ADMIN']);
   if (!context) return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
-  const existing = await prisma.obra.findFirst({
-    where: { id, tenantId: context.tenantId },
-    select: { id: true },
-  });
-  if (!existing) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
+  const isOwner = await tenantOwnsObra(id, context.tenantId, context.userId, context.role);
+  if (!isOwner) return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
 
   await deleteObraCascade(id, context.tenantId);
   return NextResponse.json({ ok: true, deleted: true });

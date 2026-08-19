@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ obra
   if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   if (!canAccessResource(context.role, 'etapas'))
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
-  if (!(await tenantOwnsObra(obraId, context.tenantId)))
+  if (!(await tenantOwnsObra(obraId, context.tenantId, context.userId, context.role)))
     return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
 
   const etapas = await prisma.etapa.findMany({

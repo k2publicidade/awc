@@ -44,16 +44,27 @@ export async function GET(req: NextRequest) {
   if (!resource || !canAccessResource(context.role, resource))
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
+  const userObraScope =
+    context.role === 'MASTER_ADMIN'
+      ? { tenantId: context.tenantId }
+      : {
+          tenantId: context.tenantId,
+          OR: [
+            { engenheiroId: context.userId },
+            { clienteId: context.userId },
+          ],
+        };
+
   if (type === 'medicao') {
     const medicaoId = searchParams.get('medicaoId') || '';
     const owned = await prisma.medicao.findFirst({
-      where: { id: medicaoId, obra: { tenantId: context.tenantId } },
+      where: { id: medicaoId, obra: userObraScope },
       select: { id: true },
     });
     if (!owned) return NextResponse.json({ error: 'Medição não encontrada' }, { status: 404 });
   } else {
     if (!obraId) return NextResponse.json({ error: 'obraId é obrigatório' }, { status: 400 });
-    if (!(await tenantOwnsObra(obraId, context.tenantId)))
+    if (!(await tenantOwnsObra(obraId, context.tenantId, context.userId, context.role)))
       return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
   }
 

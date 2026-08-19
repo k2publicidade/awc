@@ -11,8 +11,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!canAccessResource(context.role, 'rdos'))
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
+  const userObraScope =
+    context.role === 'MASTER_ADMIN'
+      ? { tenantId: context.tenantId }
+      : {
+          tenantId: context.tenantId,
+          OR: [
+            { engenheiroId: context.userId },
+            { clienteId: context.userId },
+          ],
+        };
+
   const rdo = await prisma.rDO.findFirst({
-    where: { id, obra: { tenantId: context.tenantId } },
+    where: { id, obra: userObraScope },
     include: {
       obra: { select: { id: true, nome: true, codigo: true } },
       responsavel: { select: { id: true, name: true } },
@@ -38,8 +49,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   if (!canAccessResource(context.role, 'rdos', true))
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
+
+  const userObraScope =
+    context.role === 'MASTER_ADMIN'
+      ? { tenantId: context.tenantId }
+      : {
+          tenantId: context.tenantId,
+          OR: [
+            { engenheiroId: context.userId },
+            { clienteId: context.userId },
+          ],
+        };
+
   const existing = await prisma.rDO.findFirst({
-    where: { id, obra: { tenantId: context.tenantId } },
+    where: { id, obra: userObraScope },
     select: { id: true },
   });
   if (!existing) return NextResponse.json({ error: 'RDO não encontrado' }, { status: 404 });
@@ -111,8 +134,20 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   if (!canAccessResource(context.role, 'rdos', true))
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
+
+  const userObraScope =
+    context.role === 'MASTER_ADMIN'
+      ? { tenantId: context.tenantId }
+      : {
+          tenantId: context.tenantId,
+          OR: [
+            { engenheiroId: context.userId },
+            { clienteId: context.userId },
+          ],
+        };
+
   const existing = await prisma.rDO.findFirst({
-    where: { id, obra: { tenantId: context.tenantId } },
+    where: { id, obra: userObraScope },
     select: { id: true },
   });
   if (!existing) return NextResponse.json({ error: 'RDO não encontrado' }, { status: 404 });

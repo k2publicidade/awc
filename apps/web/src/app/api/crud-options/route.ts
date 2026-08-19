@@ -8,7 +8,18 @@ export async function GET() {
       'SUPER_ADMIN', 'ADMIN', 'ENGENHEIRO', 'ENCARREGADO', 'FINANCEIRO', 'ALMOXARIFE',
     ]);
     if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    const { tenantId } = context;
+    const { tenantId, userId, role } = context;
+    const userObraScope =
+      role === 'MASTER_ADMIN'
+        ? { tenantId }
+        : {
+            tenantId,
+            OR: [
+              { engenheiroId: userId },
+              { clienteId: userId },
+            ],
+          };
+
     const [
       obras,
       users,
@@ -22,7 +33,7 @@ export async function GET() {
       equipes,
     ] = await Promise.all([
       prisma.obra.findMany({
-        where: { tenantId },
+        where: userObraScope,
         select: { id: true, nome: true, codigo: true },
         orderBy: { nome: 'asc' },
         take: 500,
@@ -59,7 +70,7 @@ export async function GET() {
         .catch(() => []),
       prisma.etapa
         .findMany({
-          where: { obra: { tenantId } },
+          where: { obra: userObraScope },
           select: { id: true, nome: true, obra: { select: { codigo: true } } },
           orderBy: { nome: 'asc' },
           take: 500,
@@ -67,7 +78,7 @@ export async function GET() {
         .catch(() => []),
       prisma.contrato
         .findMany({
-          where: { obra: { tenantId } },
+          where: { obra: userObraScope },
           select: { id: true, numero: true, objeto: true },
           orderBy: { createdAt: 'desc' },
           take: 500,
@@ -75,7 +86,7 @@ export async function GET() {
         .catch(() => []),
       prisma.medicao
         .findMany({
-          where: { obra: { tenantId } },
+          where: { obra: userObraScope },
           select: { id: true, numero: true, obra: { select: { codigo: true, nome: true } } },
           orderBy: { createdAt: 'desc' },
           take: 500,
@@ -83,7 +94,7 @@ export async function GET() {
         .catch(() => []),
       prisma.inspecao
         .findMany({
-          where: { obra: { tenantId } },
+          where: { obra: userObraScope },
           select: { id: true, tipo: true, data: true, obra: { select: { codigo: true } } },
           orderBy: { data: 'desc' },
           take: 500,
@@ -91,7 +102,7 @@ export async function GET() {
         .catch(() => []),
       prisma.equipeObra
         .findMany({
-          where: { tenantId },
+          where: { obra: userObraScope },
           select: { id: true, nome: true, obra: { select: { codigo: true, nome: true } } },
           orderBy: { nome: 'asc' },
           take: 500,

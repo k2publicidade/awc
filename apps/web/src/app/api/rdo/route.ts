@@ -15,7 +15,18 @@ export async function GET(req: NextRequest) {
   const dataInicio = searchParams.get('dataInicio');
   const dataFim = searchParams.get('dataFim');
 
-  const where: DynamicValue = { obra: { tenantId: context.tenantId } };
+  const userObraScope =
+    context.role === 'MASTER_ADMIN'
+      ? { tenantId: context.tenantId }
+      : {
+          tenantId: context.tenantId,
+          OR: [
+            { engenheiroId: context.userId },
+            { clienteId: context.userId },
+          ],
+        };
+
+  const where: DynamicValue = { obra: userObraScope };
   if (obraId) where.obraId = obraId;
   if (dataInicio || dataFim) {
     where.data = {};
@@ -50,6 +61,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const userId = context.userId;
+  const { tenantOwnsObra } = await import('@/lib/authorization');
+  if (!(await tenantOwnsObra(body.obraId, context.tenantId, context.userId, context.role))) {
+    return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
+  }
   await assertTenantRelations(
     { obraId: body.obraId, responsavelId: body.responsavelId || userId },
     context.tenantId
