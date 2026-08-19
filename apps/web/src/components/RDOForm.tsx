@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { uploadFile } from '@/lib/upload-client';
 import { createWatermarkedEvidence, type EvidenceLocation } from '@/lib/photo-evidence';
 import { VoiceInputButton } from '@/components/voice-input-button';
+import { useObra } from '@/hooks/use-obra';
 import {
   Building2,
   Cloud,
@@ -60,6 +61,7 @@ interface Foto {
 export function RDOForm({ rdoId }: { rdoId?: string }) {
   const router = useRouter();
   const isEditing = Boolean(rdoId);
+  const { activeObra, activeObraId } = useObra();
 
   // Loading states
   const [loading, setLoading] = useState(isEditing);
@@ -72,9 +74,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   const [engenheiros, setEngenheiros] = useState<{ id: string; name: string }[]>([]);
 
   // Identificação
-  const [obraId, setObraId] = useState('');
+  const [obraId, setObraId] = useState(() => (!isEditing && activeObraId ? activeObraId : ''));
   const [showObraDropdown, setShowObraDropdown] = useState(false);
-  const [obraNome, setObraNome] = useState('');
+  const [obraNome, setObraNome] = useState(() => (!isEditing && activeObra?.nome ? activeObra.nome : ''));
   const [data, setData] = useState(new Date().toISOString().slice(0, 10));
   const [engenheiro, setEngenheiro] = useState('');
   const [engenheiroId, setEngenheiroId] = useState('');

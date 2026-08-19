@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { cn } from '@/lib/utils';
 import { requireSession } from '@/lib/session-context';
 import { canAccessResource } from '@/lib/authorization';
+import { ActiveObraToggleButton } from '@/components/obras/active-obra-toggle-button';
 import {
   Activity,
   AlertTriangle,
@@ -201,6 +202,8 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
 
         {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          <ActiveObraToggleButton obraId={obra.id} obraNome={obra.nome} />
+
           <a
             href={`/api/relatorios?type=executivo&obraId=${obra.id}`}
             target="_blank"

@@ -6,8 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
-    ,"billing:setup": "tsx scripts/setup-abacatepay.ts"
+    "lint": "eslint",
+    "billing:setup": "tsx scripts/setup-abacatepay.ts"
   },
   "dependencies": {
     "@abacatepay/sdk": "^2.0.3",
@@ -30,6 +30,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "gsap": "^3.15.0",
     "lucide-react": "^1.17.0",
     "mammoth": "^1.12.1",
     "next": "16.3.0",

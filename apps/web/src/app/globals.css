@@ -4,38 +4,39 @@
 @theme inline {
   --font-sans: var(--font-inter);
   --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono);
 
   /* RIGOR Official Color System */
-  --color-rigor-navy: #0B1F33;          /* Dominant 50% */
-  --color-rigor-navy-dark: #071524;
-  --color-rigor-navy-light: #162E47;
-  --color-rigor-graphite: #354654;      /* Secondary 25% */
-  --color-rigor-graphite-light: #4D6070;
-  --color-rigor-blue: #1687FF;          /* Accent 10% */
+  --color-rigor-navy: #08131E;          /* Blueprint Dark */
+  --color-rigor-navy-dark: #050C14;
+  --color-rigor-navy-light: #112030;
+  --color-rigor-graphite: #23394E;      /* Ruler & Border */
+  --color-rigor-graphite-light: #3A536B;
+  --color-rigor-blue: #0066FF;          /* Surveyor Cobalt */
   --color-rigor-blue-glow: #389BFF;
-  --color-rigor-blue-dark: #0F6ED4;
-  --color-rigor-white: #F5F7F6;         /* Neutral 10% */
-  --color-rigor-grey: #AAB4BD;          /* Neutral 5% */
-  --color-rigor-grey-light: #DCE3E8;
+  --color-rigor-blue-dark: #0052CC;
+  --color-rigor-white: #F4F6F8;         /* Mineral White */
+  --color-rigor-grey: #94A3B8;          /* Slate Grey */
+  --color-rigor-grey-light: #CBD5E1;
 
   /* Functional Status Colors */
-  --color-rigor-success: #10b981;
-  --color-rigor-warning: #f59e0b;
-  --color-rigor-danger: #ef4444;
-  --color-rigor-info: #1687ff;
+  --color-rigor-success: #0EA76B;
+  --color-rigor-warning: #E87A18;
+  --color-rigor-danger: #EF4444;
+  --color-rigor-info: #0066FF;
 }
 
 @layer base {
   :root {
-    --rigor-navy: #0B1F33;
-    --rigor-graphite: #354654;
-    --rigor-blue: #1687FF;
-    --rigor-white: #F5F7F6;
-    --rigor-grey: #AAB4BD;
-    --rigor-success: #10b981;
-    --rigor-warning: #f59e0b;
-    --rigor-danger: #ef4444;
-    --rigor-info: #1687ff;
+    --rigor-navy: #08131E;
+    --rigor-graphite: #23394E;
+    --rigor-blue: #0066FF;
+    --rigor-white: #F4F6F8;
+    --rigor-grey: #94A3B8;
+    --rigor-success: #0EA76B;
+    --rigor-warning: #E87A18;
+    --rigor-danger: #EF4444;
+    --rigor-info: #0066FF;
     --radius: 0.875rem;
   }
 

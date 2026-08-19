@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useObra } from '@/hooks/use-obra';
 import { Button } from '@/components/ui/button';
 import {
   BarChart3,
@@ -83,6 +84,7 @@ const excels = [
 ];
 
 export default function RelatoriosPage() {
+  const { obras: globalObras, activeObraId, setActiveObraId } = useObra();
   const [obras, setObras] = useState<Obra[]>([]);
   const [obraId, setObraId] = useState('');
   const [dataInicio, setDataInicio] = useState(() =>
@@ -92,15 +94,28 @@ export default function RelatoriosPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/crud/obras')
-      .then((r) => r.json())
-      .then((d) => {
-        const rows: Obra[] = d.rows || [];
-        setObras(rows);
-        if (rows.length > 0) setObraId(rows[0].id);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    if (globalObras && globalObras.length > 0) {
+      setObras(globalObras);
+      if (activeObraId && globalObras.some((o) => o.id === activeObraId)) {
+        setObraId(activeObraId);
+      } else {
+        setObraId(globalObras[0].id);
+      }
+      setLoading(false);
+    } else {
+      fetch('/api/crud/obras')
+        .then((r) => r.json())
+        .then((d) => {
+          const rows: Obra[] = d.rows || [];
+          setObras(rows);
+          if (rows.length > 0) {
+            const initial = activeObraId && rows.some((o) => o.id === activeObraId) ? activeObraId : rows[0].id;
+            setObraId(initial);
+          }
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [globalObras, activeObraId]);
 
   function openReport(type: string) {
     if (!obraId) return;
@@ -132,7 +147,10 @@ export default function RelatoriosPage() {
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={obraId}
-            onChange={(e) => setObraId(e.target.value)}
+            onChange={(e) => {
+              setObraId(e.target.value);
+              setActiveObraId(e.target.value);
+            }}
             className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold outline-none focus:border-rigor-orange"
           >
             {obras.length === 0 && <option value="">Nenhuma obra cadastrada</option>}

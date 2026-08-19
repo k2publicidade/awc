@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useObra } from '@/hooks/use-obra';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, FileText, Plus, Search, Loader2, X } from 'lucide-react';
+import { Building2, ChevronLeft, ChevronRight, FileText, Globe, Plus, Search, Loader2, X } from 'lucide-react';
 
 const PAGE_SIZE = 25;
 
 export default function RDOPage() {
+  const { activeObraId, activeObra, isAllObras, clearActiveObra } = useObra();
   const [rdos, setRdos] = useState<DynamicValue[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -20,9 +22,15 @@ export default function RDOPage() {
     const t = setTimeout(
       () => {
         setLoading(true);
-        fetch(
-          `/api/crud/rdos?search=${encodeURIComponent(search)}&page=${page}&pageSize=${PAGE_SIZE}`
-        )
+        const params = new URLSearchParams({
+          search,
+          page: String(page),
+          pageSize: String(PAGE_SIZE),
+        });
+        if (activeObraId && activeObraId !== 'all') {
+          params.set('obraId', activeObraId);
+        }
+        fetch(`/api/crud/rdos?${params}`)
           .then((r) => r.json())
           .then((data) => {
             if (active) {
@@ -46,7 +54,7 @@ export default function RDOPage() {
       active = false;
       clearTimeout(t);
     };
-  }, [search, page]);
+  }, [search, page, activeObraId]);
 
   return (
     <div className="h-full w-full">
@@ -75,6 +83,38 @@ export default function RDOPage() {
             Novo RDO
           </Button>
         </Link>
+      </div>
+
+      {/* Banner de Obra Ativa */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#1687FF]/25 bg-gradient-to-r from-blue-50/90 via-slate-50/70 to-white px-4 py-2.5 text-xs shadow-xs">
+        <div className="flex items-center gap-2 text-slate-700">
+          {isAllObras ? (
+            <>
+              <Globe className="h-4 w-4 text-slate-500 shrink-0" />
+              <span>
+                Exibindo RDOs de <strong>todas as obras</strong> (visão global).
+              </span>
+            </>
+          ) : (
+            <>
+              <Building2 className="h-4 w-4 text-[#1687FF] shrink-0" />
+              <span>
+                Exibindo RDOs da obra ativa:{' '}
+                <strong className="text-[#0B1F33] font-bold">{activeObra?.nome}</strong>{' '}
+                <span className="font-mono text-slate-500 font-semibold">({activeObra?.codigo})</span>
+              </span>
+            </>
+          )}
+        </div>
+        {!isAllObras && (
+          <button
+            type="button"
+            onClick={clearActiveObra}
+            className="text-[11px] font-bold text-[#1687FF] hover:underline cursor-pointer"
+          >
+            Ver todas as obras
+          </button>
+        )}
       </div>
 
       {/* Filtros */}

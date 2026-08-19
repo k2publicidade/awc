@@ -10,10 +10,12 @@ import { cn } from '@/lib/utils';
 import { uploadFile } from '@/lib/upload-client';
 import { buildCrudPayload } from '@/lib/crud-form-payload';
 import { VoiceInputButton } from '@/components/voice-input-button';
+import { useObra } from '@/hooks/use-obra';
 import {
   Activity,
   AlertTriangle,
   Boxes,
+  Building2,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -24,12 +26,15 @@ import {
   Eye,
   FileCheck2,
   FileUp,
+  Globe,
   HardHat,
   Loader2,
   PackageCheck,
   Plus,
   Search,
   ShieldCheck,
+  Sparkles,
+  Star,
   Trash2,
   UsersRound,
   X,
@@ -244,6 +249,7 @@ function BuscaBridge({ module }: { module: string }) {
 
 function CrudModuleInner({ module, initialSearch }: { module: string; initialSearch: string }) {
   const router = useRouter();
+  const { activeObraId, activeObra, isAllObras, clearActiveObra } = useObra();
   const initialResource = moduleResourceMap[module] || module;
   const tabs = moduleTabs[module] || [
     { label: 'Cadastro', resource: initialResource },
@@ -266,6 +272,11 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
   const { confirm, dialog: confirmDialog } = useConfirm();
   const lastSearch = useRef(initialSearch);
 
+  const hasObraRelation = useMemo(
+    () => cfg.fields.some((f) => f.name === 'obraId') && cfg.key !== 'obras',
+    [cfg]
+  );
+
   const listFields = useMemo(() => cfg.fields.filter((f) => f.list).slice(0, 8), [cfg]);
   const totals = useMemo(
     () => computeTotals(rows, cfg.key, total, stats, module),
@@ -281,6 +292,9 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
         page: String(page),
         pageSize: String(PAGE_SIZE),
       });
+      if (hasObraRelation && activeObraId && activeObraId !== 'all') {
+        params.set('obraId', activeObraId);
+      }
       Object.entries(current.filters || {}).forEach(([k, v]) => params.set(k, v));
       const [dataRes, optRes] = await Promise.all([
         fetch(`/api/crud/${cfg.key}?${params}`),
@@ -306,7 +320,7 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
     const t = setTimeout(() => load(), isSearchChange ? 400 : 0);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cfg.key, activeTab, page, search]);
+  }, [cfg.key, activeTab, page, search, activeObraId]);
 
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -315,11 +329,12 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
     setError('');
     try {
       const formData = new FormData(e.currentTarget);
+      const obraDefaults = hasObraRelation && activeObraId ? { obraId: activeObraId } : {};
       const body = await buildCrudPayload({
         fields: cfg.fields,
         formData,
         currentRow: modal.row,
-        defaults: current.filters || {},
+        defaults: { ...obraDefaults, ...(current.filters || {}) },
         upload: uploadFile,
         fallbackCategory: cfg.key,
       });
@@ -372,6 +387,9 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
   async function exportCsv() {
     try {
       const params = new URLSearchParams({ search });
+      if (hasObraRelation && activeObraId && activeObraId !== 'all') {
+        params.set('obraId', activeObraId);
+      }
       Object.entries(current.filters || {}).forEach(([k, v]) => params.set(k, v));
       const res = await fetch(`/api/crud/${cfg.key}?${params}`);
       const data = await res.json();
@@ -456,7 +474,15 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
           </Button>
           <Button
             className="rigor-btn-primary h-10 rounded-lg px-5 text-xs font-bold text-white shadow-md"
-            onClick={() => setModal({ mode: 'create', row: { ...(current.filters || {}) } })}
+            onClick={() =>
+              setModal({
+                mode: 'create',
+                row: {
+                  ...(hasObraRelation && activeObraId ? { obraId: activeObraId } : {}),
+                  ...(current.filters || {}),
+                },
+              })
+            }
           >
             <Plus className="mr-2 h-4 w-4" />
             {current.action || defaultAction[cfg.key] || 'Novo registro'}
@@ -502,6 +528,39 @@ function CrudModuleInner({ module, initialSearch }: { module: string; initialSea
           </div>
         ))}
       </div>
+
+      {hasObraRelation && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#1687FF]/25 bg-gradient-to-r from-blue-50/90 via-slate-50/70 to-white px-4 py-2.5 text-xs shadow-xs">
+          <div className="flex items-center gap-2 text-slate-700">
+            {isAllObras ? (
+              <>
+                <Globe className="h-4 w-4 text-slate-500 shrink-0" />
+                <span>
+                  Exibindo registros de <strong>todas as obras</strong> (visão global).
+                </span>
+              </>
+            ) : (
+              <>
+                <Building2 className="h-4 w-4 text-[#1687FF] shrink-0" />
+                <span>
+                  Exibindo registros da obra ativa:{' '}
+                  <strong className="text-[#0B1F33] font-bold">{activeObra?.nome}</strong>{' '}
+                  <span className="font-mono text-slate-500 font-semibold">({activeObra?.codigo})</span>
+                </span>
+              </>
+            )}
+          </div>
+          {!isAllObras && (
+            <button
+              type="button"
+              onClick={clearActiveObra}
+              className="text-[11px] font-bold text-[#1687FF] hover:underline cursor-pointer"
+            >
+              Ver todas as obras
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative h-10 w-full max-w-[340px]">
@@ -1114,6 +1173,9 @@ function DataTable({
   onEdit: (row: DynamicValue) => void;
   onDelete: (row: DynamicValue) => void;
 }) {
+  const { activeObraId, setActiveObraId } = useObra();
+  const isObraTable = fields.some((f) => f.name === 'tipo') && fields.some((f) => f.name === 'valorContratado');
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[980px] text-left text-[13.5px]">
@@ -1129,52 +1191,86 @@ function DataTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {rows.map((row, i) => (
-            <tr key={row.id} className="hover:bg-slate-50/30 transition-colors">
-              <td className="px-5 py-4 font-bold text-slate-800">{offset + i + 1}</td>
-              {fields.map((f) => (
-                <td
-                  key={f.name}
-                  className="max-w-[240px] truncate px-3 py-4 text-slate-600 font-medium"
-                >
-                  {f.name === 'status' || f.name === 'resultado' || f.name === 'situacao' ? (
-                    <StatusPill value={fmtValue(row, f)} />
-                  ) : f.type === 'boolean' ? (
-                    <BooleanPill value={Boolean(row[f.name])} label={f.name === 'isActive' ? (row[f.name] ? 'Ativo' : 'Inativo') : fmtValue(row, f)} />
-                  ) : f.type === 'currency' ? (
-                    <span className="font-mono font-bold text-slate-900">{fmtValue(row, f)}</span>
-                  ) : f.name === 'nome' || f.name === 'codigo' ? (
-                    <span className="font-bold text-slate-900">{fmtValue(row, f)}</span>
-                  ) : (
-                    fmtValue(row, f)
+          {rows.map((row, i) => {
+            const isCurrentActiveObra = isObraTable && row.id === activeObraId;
+            return (
+              <tr
+                key={row.id}
+                className={cn(
+                  'transition-colors',
+                  isCurrentActiveObra ? 'bg-blue-50/40 hover:bg-blue-50/60' : 'hover:bg-slate-50/30'
+                )}
+              >
+                <td className="px-5 py-4 font-bold text-slate-800">{offset + i + 1}</td>
+                {fields.map((f) => (
+                  <td
+                    key={f.name}
+                    className="max-w-[240px] truncate px-3 py-4 text-slate-600 font-medium"
+                  >
+                    {f.name === 'status' || f.name === 'resultado' || f.name === 'situacao' ? (
+                      <StatusPill value={fmtValue(row, f)} />
+                    ) : f.type === 'boolean' ? (
+                      <BooleanPill value={Boolean(row[f.name])} label={f.name === 'isActive' ? (row[f.name] ? 'Ativo' : 'Inativo') : fmtValue(row, f)} />
+                    ) : f.type === 'currency' ? (
+                      <span className="font-mono font-bold text-slate-900">{fmtValue(row, f)}</span>
+                    ) : f.name === 'nome' && isObraTable ? (
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900">{fmtValue(row, f)}</span>
+                        {isCurrentActiveObra && (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black uppercase text-emerald-700">
+                            <Star className="h-3 w-3 fill-emerald-500 text-emerald-600" />
+                            Ativa
+                          </span>
+                        )}
+                      </div>
+                    ) : f.name === 'nome' || f.name === 'codigo' ? (
+                      <span className="font-bold text-slate-900">{fmtValue(row, f)}</span>
+                    ) : (
+                      fmtValue(row, f)
+                    )}
+                  </td>
+                ))}
+                <td className="whitespace-nowrap px-5 py-4 text-right">
+                  {isObraTable && !isCurrentActiveObra && (
+                    <button
+                      title="Definir como obra ativa"
+                      onClick={() => {
+                        setActiveObraId(row.id);
+                        toast({
+                          title: 'Obra Ativa Selecionada',
+                          description: `"${row.nome}" foi definida como sua obra ativa no painel.`,
+                        });
+                      }}
+                      className="mr-1.5 rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-[#1687FF] transition-colors cursor-pointer"
+                    >
+                      <Sparkles className="h-4 w-4 stroke-[2]" />
+                    </button>
                   )}
+                  <button
+                    title="Ver detalhes"
+                    onClick={() => onView(row)}
+                    className="mr-1.5 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                  >
+                    <Eye className="h-4 w-4 stroke-[2]" />
+                  </button>
+                  <button
+                    title="Editar"
+                    onClick={() => onEdit(row)}
+                    className="mr-1.5 rounded-lg p-2 text-[#ff4d00] hover:bg-orange-50 transition-colors cursor-pointer"
+                  >
+                    <Edit3 className="h-4 w-4 stroke-[2]" />
+                  </button>
+                  <button
+                    title="Excluir"
+                    onClick={() => onDelete(row)}
+                    className="rounded-lg p-2 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4 stroke-[2]" />
+                  </button>
                 </td>
-              ))}
-              <td className="whitespace-nowrap px-5 py-4 text-right">
-                <button
-                  title="Ver detalhes"
-                  onClick={() => onView(row)}
-                  className="mr-1.5 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
-                >
-                  <Eye className="h-4 w-4 stroke-[2]" />
-                </button>
-                <button
-                  title="Editar"
-                  onClick={() => onEdit(row)}
-                  className="mr-1.5 rounded-lg p-2 text-[#ff4d00] hover:bg-orange-50 transition-colors cursor-pointer"
-                >
-                  <Edit3 className="h-4 w-4 stroke-[2]" />
-                </button>
-                <button
-                  title="Excluir"
-                  onClick={() => onDelete(row)}
-                  className="rounded-lg p-2 text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="h-4 w-4 stroke-[2]" />
-                </button>
-              </td>
-            </tr>
-          ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { sidebarNav } from '@/lib/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { useObra } from '@/hooks/use-obra';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Settings } from 'lucide-react';
+import { Building2, Globe, HardHat, Settings, SlidersHorizontal } from 'lucide-react';
 import { RigorLogo } from '@/components/ui/rigor-logo';
 
 const roleLabel: Record<string, string> = {
@@ -33,6 +34,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { activeObra, isAllObras } = useObra();
   const userRole = (user as DynamicValue)?.role || 'SUPER_ADMIN';
   const filteredNav = sidebarNav.filter((item) => item.roles.includes(userRole));
 
@@ -49,7 +51,55 @@ export function Sidebar({
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5 scrollbar-thin">
+      {/* Widget de Obra em Foco no Sidebar */}
+      <div className="border-b border-[#354654]/40 px-3 py-2.5 bg-[#071524]/50">
+        <div className="flex items-center justify-between px-1 mb-1">
+          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-[#AAB4BD]">
+            Obra Ativa
+          </span>
+          <Link
+            href="/obras"
+            onClick={onNavigate}
+            title="Gerenciar Obras"
+            className="text-[10px] font-bold text-[#1687FF] hover:underline"
+          >
+            Obras
+          </Link>
+        </div>
+
+        <Link
+          href={activeObra ? `/obras/${activeObra.id}` : '/obras'}
+          onClick={onNavigate}
+          className="group flex items-center gap-2.5 rounded-xl bg-white/[0.04] p-2 hover:bg-white/[0.08] transition-all border border-white/5 hover:border-[#1687FF]/30"
+        >
+          <div
+            className={cn(
+              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors',
+              isAllObras
+                ? 'border-white/10 bg-white/5 text-[#AAB4BD] group-hover:text-white'
+                : 'border-[#1687FF]/40 bg-[#1687FF]/10 text-[#1687FF]'
+            )}
+          >
+            {isAllObras ? (
+              <Globe className="h-4 w-4" />
+            ) : (
+              <Building2 className="h-4 w-4" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12.5px] font-bold text-white group-hover:text-[#1687FF] transition-colors leading-tight">
+              {isAllObras ? 'Todas as Obras' : activeObra?.nome}
+            </p>
+            <p className="truncate text-[10.5px] font-semibold text-[#AAB4BD]">
+              {isAllObras
+                ? 'Visão Global'
+                : `${activeObra?.codigo || 'OBR'} ${activeObra?.cidade ? `· ${activeObra.cidade}` : ''}`}
+            </p>
+          </div>
+        </Link>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 scrollbar-thin">
         {filteredNav.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           const Icon = item.icon;

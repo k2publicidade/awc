@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Bell, ChevronDown, KeyRound, LogOut, Menu, Search, Settings, X } from 'lucide-react';
 
+import { ActiveObraSelector } from '@/components/layout/active-obra-selector';
+
 function initials(name?: string | null) {
   if (!name) return 'U';
   const parts = name.trim().split(/\s+/);
@@ -75,24 +77,28 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[#AAB4BD]/30 bg-white/90 px-4 text-[#0B1F33] backdrop-blur-md shadow-[0_2px_12px_rgba(11,31,51,0.03)] sm:px-8">
-      <div className="flex min-w-0 flex-1 items-center gap-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[#AAB4BD]/30 bg-white/90 px-3 sm:px-6 lg:px-8 text-[#0B1F33] backdrop-blur-md shadow-[0_2px_12px_rgba(11,31,51,0.03)] gap-2 sm:gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-4">
         <Button
           variant="ghost"
           size="icon"
-          className="h-11 w-11 text-[#354654] hover:bg-[#F5F7F6] hover:text-[#0B1F33] lg:hidden"
+          className="h-10 w-10 shrink-0 text-[#354654] hover:bg-[#F5F7F6] hover:text-[#0B1F33] lg:hidden"
           onClick={onMenuClick}
           aria-label="Abrir menu"
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="relative hidden w-full max-w-[440px] md:block">
-          <Search className="absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-[#354654]" />
+
+        {/* Seletor Global de Obra Ativa */}
+        <ActiveObraSelector />
+
+        <div className="relative hidden w-full max-w-[340px] xl:max-w-[400px] md:block">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#354654]" />
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submitSearch()}
-            className="h-10 w-full rounded-lg border border-[#AAB4BD]/40 bg-[#F5F7F6]/70 pl-11 pr-4 text-[13.5px] text-[#0B1F33] placeholder:text-[#354654] outline-none transition-all focus:border-[#1687FF] focus:bg-white focus:ring-4 focus:ring-[#1687FF]/10"
+            className="h-10 w-full rounded-xl border border-[#AAB4BD]/40 bg-[#F5F7F6]/70 pl-10 pr-4 text-[13px] text-[#0B1F33] placeholder:text-[#354654] outline-none transition-all focus:border-[#1687FF] focus:bg-white focus:ring-4 focus:ring-[#1687FF]/10"
             placeholder={`Buscar em ${targetLabel}... (Enter)`}
             aria-label={`Buscar em ${targetLabel}`}
           />

@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   Activity,
   AlertTriangle,
@@ -16,19 +18,18 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
-  Clock3,
   CloudSun,
   Coins,
   FileCheck2,
   HardHat,
   Layers,
-  Lock,
+  MapPin,
   Menu,
   PackageCheck,
+  ShieldAlert,
   ShieldCheck,
-  Sparkles,
+  Sliders,
   TrendingUp,
-  Users2,
   UsersRound,
   WalletCards,
   X,
@@ -38,8 +39,23 @@ import { SAAS_PLANS, type SaasPlan } from '@/lib/saas';
 import { RigorLogo, RigorMark } from '@/components/ui/rigor-logo';
 import styles from './landing-page.module.css';
 
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
+
 type BillingCycle = 'monthly' | 'semiannual' | 'annual';
 type MockupTab = 'curva' | 'rdo' | 'financeiro' | 'qualidade';
+
+interface MilestonePoint {
+  id: string;
+  month: string;
+  x: number;
+  plannedY: number;
+  actualY: number;
+  label: string;
+  status: 'concluido' | 'em_andamento' | 'planejado';
+  spi?: number;
+}
 
 const cycles: Record<
   BillingCycle,
@@ -50,69 +66,85 @@ const cycles: Record<
   annual: { label: 'Anual', months: 12, discount: 0.15, badge: '15% OFF' },
 };
 
+const curveMilestones: MilestonePoint[] = [
+  { id: 'm1', month: 'M01', x: 40, plannedY: 130, actualY: 130, label: 'Mobilização & Canteiro', status: 'concluido', spi: 1.0 },
+  { id: 'm2', month: 'M02', x: 110, plannedY: 115, actualY: 112, label: 'Fundações Profundas', status: 'concluido', spi: 1.02 },
+  { id: 'm3', month: 'M03', x: 180, plannedY: 95, actualY: 90, label: 'Estrutura 1º a 3º Pav.', status: 'concluido', spi: 1.05 },
+  { id: 'm4', month: 'M04', x: 250, plannedY: 72, actualY: 66, label: 'Laje 4º Pav. & Alvenaria', status: 'em_andamento', spi: 1.04 },
+  { id: 'm5', month: 'M05', x: 320, plannedY: 50, actualY: 44, label: 'Instalações Hidráulicas/Elétricas', status: 'planejado' },
+  { id: 'm6', month: 'M06', x: 390, plannedY: 30, actualY: 26, label: 'Revestimentos & Fachada', status: 'planejado' },
+  { id: 'm7', month: 'M07', x: 460, plannedY: 15, actualY: 15, label: 'Entrega de Chaves & As-Built', status: 'planejado' },
+];
+
 const modulesList = [
   {
+    code: 'MOD.01',
     icon: CalendarRange,
     title: 'Planejamento & Curva S',
-    tag: 'GANTT EXECUTIVO',
-    text: 'Estruture etapas, marcos críticos, avanço previsto vs realizado e caminho crítico com precisão matemática.',
+    dimensionTag: 'COTA: FÍSICO-FINANCEIRO',
+    text: 'EAP estruturada, linha de balanço, caminho crítico automático e Curva S com tolerâncias calculadas matematicamente.',
   },
   {
+    code: 'MOD.02',
     icon: ClipboardCheck,
-    title: 'RDO Digital Inteligente',
-    tag: 'CAMPO EM 3 MINUTOS',
-    text: 'Diário de obra pelo celular com clima automático por GPS, efetivo por função, fotos carimbadas e assinatura digital.',
+    title: 'RDO Digital de Campo',
+    dimensionTag: 'COTA: DIÁRIO AUDITÁVEL',
+    text: 'Preenchimento em 3 minutos no celular com clima por GPS, contagem de efetivo por função, fotos carimbadas e assinatura eletrônica.',
   },
   {
+    code: 'MOD.03',
     icon: WalletCards,
     title: 'Financeiro & Medições',
-    tag: 'CONTROLE DE CUSTOS',
-    text: 'Boletins de medição, apropriação de despesas, fluxo de caixa por obra e saldo de contratos de empreiteiros.',
+    dimensionTag: 'COTA: FLUXO DE CAIXA',
+    text: 'Boletins de medição (BM), apropriação de despesas por etapa, saldo de contratos de empreiteiros e controle de retenções técnicas.',
   },
   {
+    code: 'MOD.04',
     icon: PackageCheck,
     title: 'Suprimentos & Estoque',
-    tag: 'RASTREABILIDADE',
-    text: 'Requisições de compra, controle de estoque no almoxarifado, conferência de entregas e prevenção de desvios.',
+    dimensionTag: 'COTA: RASTREABILIDADE',
+    text: 'Requisições com vínculo direto à EAP da obra, controle de almoxarifado no canteiro, conferência de notas e prevenção de desvios.',
   },
   {
+    code: 'MOD.05',
     icon: ShieldCheck,
-    title: 'Qualidade & SST',
-    tag: 'CONFORMIDADE TOTAL',
-    text: 'Fichas de Verificação de Serviço (FVS), não conformidades com fotos e prazos, DDS e controle de EPIs.',
+    title: 'Qualidade & SST (PBQP-H)',
+    dimensionTag: 'COTA: CONFORMIDADE TOTAL',
+    text: 'Fichas de Verificação de Serviço (FVS), não conformidades com registro fotográfico e prazo de resolução, DDS e entrega de EPIs.',
   },
   {
+    code: 'MOD.06',
     icon: FileCheck2,
     title: 'Databook & GED Técnico',
-    tag: 'SEGURANÇA JURÍDICA',
-    text: 'Plantas, projetos executivos, memoriais descritivos e as-built organizados e versionados com histórico imutável.',
+    dimensionTag: 'COTA: SEGURANÇA JURÍDICA',
+    text: 'Plantas, projetos executivos, memoriais descritivos e as-built organizados com controle de revisões e histórico imutável para auditorias.',
   },
 ];
 
 const faqs = [
   {
-    q: 'Quanto tempo leva para implantar o RIGOR na minha construtora?',
-    a: 'A implantação do RIGOR é ágil e assistida. Em menos de 48 horas sua empresa já tem as primeiras obras configuradas, equipes cadastradas e encarregados registrando diários de obra no canteiro.',
+    q: 'Quanto tempo leva para a construtora começar a operar no RIGOR?',
+    a: 'A implantação do RIGOR é assistida e estruturada para rodar em menos de 48 horas. Você cadastra suas primeiras obras, importa planilhas de cronograma já existentes e a equipe de campo começa a registrar RDOs no mesmo dia.',
   },
   {
-    q: 'Consigo importar cronogramas e planilhas que já utilizo?',
-    a: 'Sim. O RIGOR possui importador inteligente de planilhas Excel (.xlsx) e arquivos de cronograma. Nossa equipe também oferece suporte na migração da sua base de dados inicial.',
+    q: 'Consigo importar meus cronogramas e planilhas de custos do Excel?',
+    a: 'Sim. O RIGOR possui importador inteligente para arquivos .xlsx com mapeamento de etapas, datas e orçamentos. Nossa equipe de engenharia também acompanha a carga inicial para garantir integridade dos dados.',
   },
   {
-    q: 'O aplicativo funciona em canteiros com sinal de internet instável?',
-    a: 'Sim. O módulo de campo e RDO foi desenvolvido com tecnologia offline-first. O encarregado preenche o diário, tira fotos e registra o efetivo mesmo sem sinal, e tudo sincroniza automaticamente assim que houver conexão.',
+    q: 'O aplicativo funciona em canteiros com sinal de celular instável ou sem internet?',
+    a: 'Sim. O módulo de campo e RDO foi desenvolvido com arquitetura offline-first integral. O encarregado registra o efetivo, anexa fotos e preenche as ocorrências mesmo offline. Assim que o celular detecta sinal, todos os dados sincronizam com a base central.',
   },
   {
-    q: 'Como funciona a segurança e o isolamento dos dados da minha empresa?',
-    a: 'Cada empresa possui um ambiente isolado com criptografia em repouso e em trânsito. Seus dados, relatórios e fotos pertencem exclusivamente à sua construtora e estão 100% adequados à LGPD.',
+    q: 'Como é garantida a segurança jurídica dos diários e medições?',
+    a: 'Cada RDO e Boletim de Medição emitido recebe carimbo com coordenadas GPS, horário imutável, registro meteorológico oficial e assinatura eletrônica dos responsáveis técnicos, gerando validade jurídica em eventuais pleitos ou auditorias.',
   },
   {
-    q: 'Existe limite de armazenamento para fotos e documentos de obra?',
-    a: 'Cada plano possui uma franquia generosa de armazenamento de alta performance. Além disso, as fotos enviadas no RDO são otimizadas automaticamente para manter máxima nitidez sem sobrecarregar a memória do celular.',
+    q: 'Existe limite para envio de fotos e armazenamento de projetos na plataforma?',
+    a: 'Cada plano possui uma franquia generosa de armazenamento de alta velocidade (10 GB a 500 GB+). Além disso, as fotos enviadas no canteiro passam por compressão inteligente sem perda de detalhe técnico.',
   },
   {
-    q: 'Como é feito o treinamento da equipe de campo e escritório?',
-    a: 'Disponibilizamos treinamentos rápidos em vídeo, manuais interativos e sessões ao vivo de onboarding com nossos especialistas em engenharia civil para garantir 100% de adesão da sua equipe.',
+    q: 'Como funciona o treinamento e adesão dos engenheiros e encarregados?',
+    a: 'A interface do RIGOR foi desenhada especificamente para a rotina do canteiro, sem telas complexas ou burocracia. Oferecemos sessões práticas de onboarding e suporte direto por canal técnico.',
   },
 ];
 
@@ -126,45 +158,337 @@ function formatMoney(value: number) {
 }
 
 export function LandingPage() {
+  const mainRef = useRef<HTMLElement>(null);
   const [billing, setBilling] = useState<BillingCycle>('annual');
   const [activeTab, setActiveTab] = useState<MockupTab>('curva');
+  const [selectedMilestone, setSelectedMilestone] = useState<MilestonePoint>(curveMilestones[3]);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
   // ROI Calculator States
   const [roiObras, setRoiObras] = useState(4);
-  const [roiValorMedio, setRoiValorMedio] = useState(3000000);
+  const [roiValorMedio, setRoiValorMedio] = useState(3500000);
 
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
   const appHref =
     (session?.user as DynamicValue)?.role === 'MASTER_ADMIN' ? '/master' : '/dashboard';
 
-  // Cálculos do simulador de ROI
+  // Cálculos do simulador de eficiência e retorno de investimento
   const roiCalculations = useMemo(() => {
     const totalSobGestao = roiObras * roiValorMedio;
-    const horasEconomizadas = roiObras * 28; // ~28 horas economizadas por obra/mês
-    const reducaoRetrabalho = totalSobGestao * 0.024; // 2.4% de prevenção de desvios/ano
-    const economiaHorasAno = horasEconomizadas * 12 * 95; // Custo hora técnica média R$ 95
-    const economiaTotalAno = reducaoRetrabalho + economiaHorasAno;
+    const horasEconomizadas = roiObras * 28; // ~28 horas técnicas poupadas por obra/mês
+    const reducaoDesviosRetrabalho = totalSobGestao * 0.024; // 2.4% histórico de prevenção de desvios orçamentários
+    const valorHorasAno = horasEconomizadas * 12 * 95; // Custo médio hora técnica engenharia R$ 95/h
+    const economiaTotalAno = reducaoDesviosRetrabalho + valorHorasAno;
 
     return {
       totalSobGestao,
       horasEconomizadas,
       economiaTotalAno,
+      reducaoDesviosRetrabalho,
     };
   }, [roiObras, roiValorMedio]);
 
+  // =========================================================================
+  // GSAP MOTION & SCROLLTRIGGER ORCHESTRATION (60fps GPU Composited & Rock-Solid)
+  // =========================================================================
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    ScrollTrigger.config({
+      ignoreMobileResize: true,
+      autoRefreshEvents: 'visibilitychange,DOMContentLoaded,load,resize',
+    });
+
+    const ctx = gsap.context(() => {
+      // 1. ENTRANCE TIMELINE (Header & Hero - Executa suavemente no mount)
+      const tl = gsap.timeline({
+        defaults: { ease: 'power3.out' },
+        onComplete: () => {
+          // Limpa inline styles para garantir responsividade e comportamento nativo
+          gsap.set(
+            [
+              `.${styles.header}`,
+              `.${styles.cadEyebrow}`,
+              `.${styles.heroTitle}`,
+              `.${styles.heroDescription}`,
+              `.${styles.heroActions}`,
+              `.${styles.dimensionItem}`,
+              `.${styles.pranchaContainer}`,
+            ],
+            { clearProps: 'transform,opacity' }
+          );
+        },
+      });
+
+      tl.fromTo(
+        `.${styles.header}`,
+        { y: -25, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6 }
+      )
+        .fromTo(
+          `.${styles.cadEyebrow}`,
+          { y: 15, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.45 },
+          '-=0.25'
+        )
+        .fromTo(
+          `.${styles.heroTitle}`,
+          { y: 22, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.55 },
+          '-=0.3'
+        )
+        .fromTo(
+          `.${styles.heroDescription}`,
+          { y: 15, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.45 },
+          '-=0.3'
+        )
+        .fromTo(
+          `.${styles.heroActions}`,
+          { y: 15, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.45 },
+          '-=0.3'
+        )
+        .fromTo(
+          `.${styles.dimensionItem}`,
+          { y: 15, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.4, stagger: 0.08 },
+          '-=0.25'
+        )
+        .fromTo(
+          `.${styles.pranchaContainer}`,
+          { y: 25, scale: 0.98, opacity: 0 },
+          { y: 0, scale: 1, opacity: 1, duration: 0.7, ease: 'power2.out' },
+          '-=0.6'
+        );
+
+      // 2. PARALLAX SUTIL NOS EIXOS DO HERO
+      gsap.to(`.${styles.heroCrosshairTL}`, {
+        yPercent: -30,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: `.${styles.hero}`,
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 1,
+        },
+      });
+      gsap.to(`.${styles.heroCrosshairBR}`, {
+        yPercent: 30,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: `.${styles.hero}`,
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 1,
+        },
+      });
+
+      // 3. FAIXA DE INDICADORES (METRICS BAND)
+      gsap.fromTo(
+        `.${styles.metricCard}`,
+        { y: 25, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.6,
+          stagger: 0.08,
+          ease: 'power2.out',
+          clearProps: 'transform,opacity',
+          scrollTrigger: {
+            trigger: `.${styles.metricsBand}`,
+            start: 'top 90%',
+            once: true,
+          },
+        }
+      );
+
+      // 4. ANTES X DEPOIS (DIAGNÓSTICO) - CARDS INDEPENDENTES
+      gsap.fromTo(
+        `.${styles.problemCardChaos}`,
+        { y: 25, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.65,
+          ease: 'power2.out',
+          clearProps: 'transform,opacity',
+          scrollTrigger: {
+            trigger: `.${styles.problemCardChaos}`,
+            start: 'top 88%',
+            once: true,
+          },
+        }
+      );
+
+      gsap.fromTo(
+        `.${styles.problemCardRigor}`,
+        { y: 25, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.65,
+          ease: 'power2.out',
+          clearProps: 'transform,opacity',
+          scrollTrigger: {
+            trigger: `.${styles.problemCardRigor}`,
+            start: 'top 88%',
+            once: true,
+          },
+        }
+      );
+
+      // 5. MÓDULOS DE ENGENHARIA (BATCH REVEAL - RESPONSIVO E SEGURO)
+      ScrollTrigger.batch(`.${styles.moduleCard}`, {
+        start: 'top 90%',
+        once: true,
+        onEnter: (batch) =>
+          gsap.fromTo(
+            batch,
+            { y: 25, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.55,
+              stagger: 0.08,
+              ease: 'power2.out',
+              clearProps: 'transform,opacity',
+            }
+          ),
+      });
+
+      // 6. SIMULADOR DE ROI
+      gsap.fromTo(
+        `.${styles.roiCard}`,
+        { y: 25, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.65,
+          ease: 'power2.out',
+          clearProps: 'transform,opacity',
+          scrollTrigger: {
+            trigger: `.${styles.roiCard}`,
+            start: 'top 88%',
+            once: true,
+          },
+        }
+      );
+
+      // 7. METODOLOGIA EM 3 PASSOS (BATCH REVEAL)
+      ScrollTrigger.batch(`.${styles.stepCard}`, {
+        start: 'top 90%',
+        once: true,
+        onEnter: (batch) =>
+          gsap.fromTo(
+            batch,
+            { y: 25, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.55,
+              stagger: 0.1,
+              ease: 'power2.out',
+              clearProps: 'transform,opacity',
+            }
+          ),
+      });
+
+      // 8. PLANOS DE PREÇO (BATCH REVEAL)
+      ScrollTrigger.batch(`.${styles.planCard}`, {
+        start: 'top 90%',
+        once: true,
+        onEnter: (batch) =>
+          gsap.fromTo(
+            batch,
+            { y: 25, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.55,
+              stagger: 0.08,
+              ease: 'power2.out',
+              clearProps: 'transform,opacity',
+            }
+          ),
+      });
+
+      // 9. FAQ ACCORDION (BATCH REVEAL)
+      ScrollTrigger.batch(`.${styles.faqItem}`, {
+        start: 'top 92%',
+        once: true,
+        onEnter: (batch) =>
+          gsap.fromTo(
+            batch,
+            { y: 18, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.45,
+              stagger: 0.05,
+              ease: 'power2.out',
+              clearProps: 'transform,opacity',
+            }
+          ),
+      });
+
+      // 10. FINAL CTA CARD
+      gsap.fromTo(
+        `.${styles.finalCtaCard}`,
+        { y: 25, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.65,
+          ease: 'power2.out',
+          clearProps: 'transform,opacity',
+          scrollTrigger: {
+            trigger: `.${styles.finalCtaCard}`,
+            start: 'top 88%',
+            once: true,
+          },
+        }
+      );
+    }, mainRef);
+
+    // Refresh ScrollTrigger após montagem e carregamento de fontes para garantir cálculos perfeitos
+    const refreshTimer = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 150);
+
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(() => {
+        ScrollTrigger.refresh();
+      });
+    }
+
+    return () => {
+      clearTimeout(refreshTimer);
+      ctx.revert();
+    };
+  }, []);
+
   return (
-    <main className={styles.page}>
+    <main ref={mainRef} className={styles.page}>
       {/* ====================================================================
-          HEADER
+          HEADER TÉCNICO DE ENGENHARIA
           ==================================================================== */}
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <Link href="/" className="flex items-center" aria-label="RIGOR - Página inicial">
-            <RigorLogo markSize={34} theme="dark" showTagline={true} taglineText="BUILT ON PRECISION" />
-          </Link>
+          <div className={styles.brandWrap}>
+            <Link href="/" aria-label="RIGOR - Página inicial">
+              <RigorLogo markSize={32} theme="dark" showTagline={true} taglineText="BUILT ON PRECISION" />
+            </Link>
+            <span className={styles.sheetStampBadge}>
+              FOLHA 01/01 · REV. 2026.4
+            </span>
+          </div>
 
           <nav className={styles.desktopNav} aria-label="Navegação principal">
             <a href="#plataforma">Plataforma</a>
@@ -176,22 +500,22 @@ export function LandingPage() {
           </nav>
 
           <div className={styles.headerActions}>
-            <div className={styles.statusPill}>
-              <span className={styles.statusDot} />
-              <span>RIGOR v2.2</span>
+            <div className={styles.statusIndicator} title="Status dos servidores da plataforma">
+              <span className={styles.statusPulse} />
+              <span>SISTEMAS ONLINE</span>
             </div>
 
             {isAuthenticated ? (
               <Link href={appHref} className={styles.headerCta}>
-                Acessar Painel <ArrowRight />
+                Acessar Painel <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             ) : (
               <>
-                <Link href="/login" className={styles.loginLink}>
+                <Link href="/login" className={styles.loginBtn}>
                   Entrar
                 </Link>
                 <a href="#planos" className={styles.headerCta}>
-                  Solicitar Demonstração <ArrowRight />
+                  Solicitar Demonstração <ArrowRight className="h-3.5 w-3.5" />
                 </a>
               </>
             )}
@@ -204,7 +528,7 @@ export function LandingPage() {
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
           >
-            {menuOpen ? <X /> : <Menu />}
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
@@ -236,17 +560,22 @@ export function LandingPage() {
       </header>
 
       {/* ====================================================================
-          HERO SECTION
+          HERO SECTION — PRANCHA TÉCNICA E CURVA S INTERATIVA
           ==================================================================== */}
       <section className={styles.hero}>
-        <div className={styles.heroGlowTop} aria-hidden="true" />
-        <div className={styles.heroGlowBottom} aria-hidden="true" />
+        <div className={styles.heroCrosshairTL} aria-hidden="true">
+          + EIXO A-01 [NÍVEL +0.00]
+        </div>
+        <div className={styles.heroCrosshairBR} aria-hidden="true">
+          + EIXO C-12 [PRECISÃO ±0.00]
+        </div>
 
         <div className={styles.heroInner}>
+          {/* COLUNA ESQUERDA: COPY DIRETO DE ENGENHARIA */}
           <div className={styles.heroCopy}>
-            <div className={styles.eyebrow}>
-              <Sparkles className="h-3.5 w-3.5 text-[#1687FF]" />
-              Gestão de Obras sem Improviso
+            <div className={styles.cadEyebrow}>
+              <Activity className="h-3.5 w-3.5 text-[#0066FF]" />
+              CADASTRO TÉCNICO · GESTÃO SEM IMPROVISO
             </div>
 
             <h1 className={styles.heroTitle}>
@@ -254,136 +583,230 @@ export function LandingPage() {
             </h1>
 
             <p className={styles.heroDescription}>
-              O RIGOR conecta escritório, engenharia e canteiro com precisão técnica.
-              Planeje cronogramas, emita RDO digital pelo celular, controle medições
-              e tome decisões executivas com dados confiáveis.
+              O <strong>RIGOR</strong> substitui o caos de planilhas desatualizadas e fotos soltas no WhatsApp por uma <strong>base técnica única</strong>. Conecte canteiro, engenharia e diretoria com dados matemáticos de avanço físico, custos e conformidade.
             </p>
 
             <div className={styles.heroActions}>
-              <a href="#planos" className={styles.primaryCta}>
-                Começar Demonstração Gratuita <ArrowRight />
+              <a href="#planos" className={styles.heroPrimaryCta}>
+                Agendar Demonstração Guiada <ArrowRight className="h-4 w-4" />
               </a>
-              <a href="#plataforma" className={styles.secondaryCta}>
-                Explorar a Plataforma <ChevronRight />
+              <a href="#plataforma" className={styles.heroSecondaryCta}>
+                Explorar Plataforma <ChevronRight className="h-4 w-4" />
               </a>
             </div>
 
-            <div className={styles.heroTrust}>
-              <div className={styles.heroTrustItem}>
-                <CheckCircle2 /> Implantação em até 48h
+            {/* COTAS DE ESPECIFICAÇÃO DE PROJETO */}
+            <div className={styles.dimensionBar}>
+              <div className={styles.dimensionItem}>
+                <div className={styles.dimensionValue}>
+                  <CheckCircle2 className="h-4 w-4 text-[#0066FF]" /> 48 Horas
+                </div>
+                <span className={styles.dimensionLabel}>Implantação assistida com importador Excel</span>
               </div>
-              <div className={styles.heroTrustItem}>
-                <CheckCircle2 /> Dados isolados por empresa
+
+              <div className={styles.dimensionItem}>
+                <div className={styles.dimensionValue}>
+                  <HardHat className="h-4 w-4 text-[#0066FF]" /> RDO Offline
+                </div>
+                <span className={styles.dimensionLabel}>Campo em 3 minutos com fotos e clima GPS</span>
               </div>
-              <div className={styles.heroTrustItem}>
-                <CheckCircle2 /> RDO offline no celular
+
+              <div className={styles.dimensionItem}>
+                <div className={styles.dimensionValue}>
+                  <ShieldCheck className="h-4 w-4 text-[#0066FF]" /> Base Única
+                </div>
+                <span className={styles.dimensionLabel}>Ambientes isolados e conformidade LGPD</span>
               </div>
             </div>
           </div>
 
-          {/* MOCKUP INTERATIVO DO PAINEL RIGOR */}
-          <div className={styles.heroVisual} aria-label="Painel interativo do RIGOR">
-            <div className={styles.mockupHeader}>
-              <div className={styles.mockupDots}>
-                <span className={styles.mockupDot} style={{ background: '#EF4444' }} />
-                <span className={styles.mockupDot} style={{ background: '#F59E0B' }} />
-                <span className={styles.mockupDot} style={{ background: '#10B981' }} />
+          {/* COLUNA DIREITA: ELEMENTO ASSINATURA — PAINEL DE TELEMETRIA & CURVA S */}
+          <div className={styles.pranchaContainer} aria-label="Painel de telemetria de obra e Curva S">
+            <div className={styles.pranchaHeader}>
+              <div className={styles.pranchaTitle}>
+                <RigorMark size={18} theme="dark" showCrosshairs={false} />
+                <span>TELEMETRIA DE OBRA · EDIFÍCIO HORIZONTE</span>
               </div>
 
-              {/* ABAS INTERATIVAS DO MOCKUP */}
-              <div className={styles.mockupNavTabs}>
+              {/* ABAS DE INSPEÇÃO */}
+              <div className={styles.pranchaNavTabs}>
                 <button
                   type="button"
                   onClick={() => setActiveTab('curva')}
-                  className={`${styles.mockupTabBtn} ${activeTab === 'curva' ? styles.mockupTabBtnActive : ''}`}
+                  className={`${styles.tabBtn} ${activeTab === 'curva' ? styles.tabBtnActive : ''}`}
                 >
                   <BarChart3 className="h-3.5 w-3.5" /> Curva S
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('rdo')}
-                  className={`${styles.mockupTabBtn} ${activeTab === 'rdo' ? styles.mockupTabBtnActive : ''}`}
+                  className={`${styles.tabBtn} ${activeTab === 'rdo' ? styles.tabBtnActive : ''}`}
                 >
-                  <ClipboardCheck className="h-3.5 w-3.5" /> RDO Digital
+                  <ClipboardCheck className="h-3.5 w-3.5" /> RDO Campo
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('financeiro')}
-                  className={`${styles.mockupTabBtn} ${activeTab === 'financeiro' ? styles.mockupTabBtnActive : ''}`}
+                  className={`${styles.tabBtn} ${activeTab === 'financeiro' ? styles.tabBtnActive : ''}`}
                 >
                   <Coins className="h-3.5 w-3.5" /> Medições
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('qualidade')}
-                  className={`${styles.mockupTabBtn} ${activeTab === 'qualidade' ? styles.mockupTabBtnActive : ''}`}
+                  className={`${styles.tabBtn} ${activeTab === 'qualidade' ? styles.tabBtnActive : ''}`}
                 >
                   <ShieldCheck className="h-3.5 w-3.5" /> Qualidade
                 </button>
               </div>
             </div>
 
-            <div className={styles.mockupBody}>
-              {/* CONTEÚDO DA ABA 1: CURVA S */}
+            <div className={styles.pranchaBody}>
+              {/* ABA 1: CURVA S DE ENGENHARIA & CAMINHO CRÍTICO */}
               {activeTab === 'curva' && (
                 <div>
-                  <div className={styles.mockupKpiGrid}>
+                  <div className={styles.kpiStrip}>
                     <div className={styles.kpiCard}>
                       <span className={styles.kpiLabel}>Avanço Físico</span>
                       <div className={styles.kpiValue}>68,4%</div>
                       <span className={styles.kpiMeta}>
-                        <TrendingUp className="h-3.5 w-3.5" /> +4,2% esta semana
+                        <TrendingUp className="h-3 w-3" /> +4,2% no período
                       </span>
                     </div>
                     <div className={styles.kpiCard}>
                       <span className={styles.kpiLabel}>Prazo Executado</span>
                       <div className={styles.kpiValue}>142d</div>
-                      <span className={styles.kpiMeta} style={{ color: '#1687FF' }}>
+                      <span className={styles.kpiMeta} style={{ color: '#0066FF' }}>
                         61% do cronograma
                       </span>
                     </div>
                     <div className={styles.kpiCard}>
                       <span className={styles.kpiLabel}>Índice SPI</span>
                       <div className={styles.kpiValue}>1,04</div>
-                      <span className={styles.kpiMeta}>No prazo previsto</span>
+                      <span className={styles.kpiMeta}>No caminho crítico</span>
                     </div>
                   </div>
 
-                  <div className={styles.mockupChartSection}>
-                    <div className={styles.chartHead}>
+                  {/* VETOR DA CURVA S INTERATIVA */}
+                  <div className={styles.curveGraphWrapper}>
+                    <div className={styles.curveHead}>
                       <strong>Curva S de Avanço Físico-Financeiro</strong>
-                      <span>Planejado x Realizado</span>
-                    </div>
-                    <div className={styles.chartBarsContainer}>
-                      {[
-                        { mes: 'JAN', h: 32, real: 30 },
-                        { mes: 'FEV', h: 46, real: 48 },
-                        { mes: 'MAR', h: 58, real: 56 },
-                        { mes: 'ABR', h: 70, real: 72 },
-                        { mes: 'MAI', h: 84, real: 86 },
-                        { mes: 'JUN', h: 96, real: 98 },
-                      ].map((item, idx) => (
-                        <div key={idx} className={styles.chartBarCol}>
-                          <div className={styles.barTrack} style={{ height: `${item.h}%` }} />
-                          <span className={styles.barMonth}>{item.mes}</span>
+                      <div className={styles.curveLegend}>
+                        <div className={styles.legendItem}>
+                          <span className={styles.legendPlanned} />
+                          <span>Planejado (Baseline)</span>
                         </div>
+                        <div className={styles.legendItem}>
+                          <span className={styles.legendActual} />
+                          <span>Realizado (+4.2%)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <svg viewBox="0 0 500 150" className={styles.svgCurve} aria-hidden="true">
+                      {/* Linhas de Grade de Projeto */}
+                      <line x1="40" y1="15" x2="480" y2="15" stroke="rgba(35, 57, 78, 0.4)" strokeWidth="1" strokeDasharray="3 3" />
+                      <line x1="40" y1="50" x2="480" y2="50" stroke="rgba(35, 57, 78, 0.4)" strokeWidth="1" strokeDasharray="3 3" />
+                      <line x1="40" y1="90" x2="480" y2="90" stroke="rgba(35, 57, 78, 0.4)" strokeWidth="1" strokeDasharray="3 3" />
+                      <line x1="40" y1="130" x2="480" y2="130" stroke="rgba(35, 57, 78, 0.6)" strokeWidth="1" />
+
+                      {/* Eixos Horizontais */}
+                      {curveMilestones.map((m) => (
+                        <g key={m.id}>
+                          <line x1={m.x} y1="15" x2={m.x} y2="130" stroke="rgba(35, 57, 78, 0.25)" strokeWidth="1" />
+                          <text x={m.x} y="145" fill="#5C7084" fontSize="9" fontFamily="var(--font-mono)" textAnchor="middle">
+                            {m.month}
+                          </text>
+                        </g>
                       ))}
+
+                      {/* Envelope de Tolerância (±3% Desvio Aceitável) */}
+                      <path
+                        d="M 40 130 C 110 120, 180 98, 250 74 C 320 52, 390 32, 460 17 L 460 13 C 390 28, 320 48, 250 70 C 180 92, 110 110, 40 130 Z"
+                        fill="rgba(0, 102, 255, 0.08)"
+                      />
+
+                      {/* Linha Planejada (Tracejada Cinza Aço) */}
+                      <path
+                        d="M 40 130 C 110 115, 180 95, 250 72 C 320 50, 390 30, 460 15"
+                        fill="none"
+                        stroke="#5C7084"
+                        strokeWidth="2"
+                        strokeDasharray="4 4"
+                      />
+
+                      {/* Linha Realizada (Azul Topografia Sólida até Mês 4) */}
+                      <path
+                        d="M 40 130 C 110 112, 180 90, 250 66"
+                        fill="none"
+                        stroke="#0066FF"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                      />
+
+                      {/* Pinos Interativos de Marcos da Obra */}
+                      {curveMilestones.map((m) => {
+                        const isSelected = selectedMilestone.id === m.id;
+                        const isPast = m.status !== 'planejado';
+                        const cy = isPast ? m.actualY : m.plannedY;
+                        return (
+                          <g
+                            key={m.id}
+                            className={styles.curveMilestonePin}
+                            onClick={() => setSelectedMilestone(m)}
+                          >
+                            <circle
+                              cx={m.x}
+                              cy={cy}
+                              r={isSelected ? 6 : 4}
+                              fill={isPast ? '#0066FF' : '#5C7084'}
+                              stroke="#FFFFFF"
+                              strokeWidth={isSelected ? 2 : 1}
+                            />
+                            {isSelected && (
+                              <circle
+                                cx={m.x}
+                                cy={cy}
+                                r={10}
+                                fill="none"
+                                stroke="#0066FF"
+                                strokeWidth="1"
+                                strokeDasharray="2 2"
+                              />
+                            )}
+                          </g>
+                        );
+                      })}
+                    </svg>
+
+                    {/* Detalhe do Marco Selecionado */}
+                    <div className="mt-2 flex items-center justify-between text-xs bg-[#08131E] p-2.5 rounded border border-[#23394E] font-mono">
+                      <div>
+                        <span className="text-[#5C7084] text-[10px] uppercase block">MARCO CRÍTICO [{selectedMilestone.month}]</span>
+                        <strong className="text-white text-[12px]">{selectedMilestone.label}</strong>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[#5C7084] text-[10px] uppercase block">STATUS DE CAMPO</span>
+                        <span className={selectedMilestone.status === 'concluido' ? 'text-[#0EA76B] font-bold' : selectedMilestone.status === 'em_andamento' ? 'text-[#0066FF] font-bold' : 'text-[#8E9EAF]'}>
+                          {selectedMilestone.status === 'concluido' ? '● CONCLUÍDO NO PRAZO' : selectedMilestone.status === 'em_andamento' ? '● EM EXECUÇÃO (SPI 1.04)' : '○ PROGRAMADO'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className={styles.mockupFeedGrid}>
-                    <div className={styles.feedCard}>
+                  <div className={styles.mockupFeed}>
+                    <div className={styles.feedItem}>
                       <div className={styles.feedIcon}>
-                        <HardHat />
+                        <HardHat className="h-4 w-4" />
                       </div>
                       <div className={styles.feedText}>
                         <small>PRÓXIMO MARCO CRÍTICO</small>
                         <strong>Concretagem da Laje 4º Pav.</strong>
                       </div>
                     </div>
-                    <div className={styles.feedCard}>
-                      <div className={styles.feedIcon} style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10B981' }}>
-                        <CheckCircle2 />
+                    <div className={styles.feedItem}>
+                      <div className={styles.feedIcon} style={{ background: 'rgba(14, 167, 107, 0.15)', color: '#0EA76B' }}>
+                        <CheckCircle2 className="h-4 w-4" />
                       </div>
                       <div className={styles.feedText}>
                         <small>STATUS OPERACIONAL</small>
@@ -394,19 +817,19 @@ export function LandingPage() {
                 </div>
               )}
 
-              {/* CONTEÚDO DA ABA 2: RDO DIGITAL */}
+              {/* ABA 2: RDO DIGITAL DE CAMPO */}
               {activeTab === 'rdo' && (
                 <div>
-                  <div className={styles.mockupKpiGrid}>
+                  <div className={styles.kpiStrip}>
                     <div className={styles.kpiCard}>
-                      <span className={styles.kpiLabel}>Efetivo Hoje</span>
-                      <div className={styles.kpiValue}>48</div>
-                      <span className={styles.kpiMeta}>7 frentes ativas</span>
+                      <span className={styles.kpiLabel}>Efetivo no Canteiro</span>
+                      <div className={styles.kpiValue}>48 OP</div>
+                      <span className={styles.kpiMeta}>7 frentes de trabalho</span>
                     </div>
                     <div className={styles.kpiCard}>
-                      <span className={styles.kpiLabel}>Clima & Tempo</span>
-                      <div className={styles.kpiValue} style={{ fontSize: '22px' }}>Ensolarado</div>
-                      <span className={styles.kpiMeta} style={{ color: '#F59E0B' }}>
+                      <span className={styles.kpiLabel}>Clima & Condições</span>
+                      <div className={styles.kpiValue} style={{ fontSize: '20px' }}>Ensolarado</div>
+                      <span className={styles.kpiMeta} style={{ color: '#E87A18' }}>
                         28°C · Sem chuva
                       </span>
                     </div>
@@ -417,45 +840,45 @@ export function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-xl border border-white/10 bg-[#0B1F33]/60 p-4 space-y-2.5">
-                    <div className="flex items-center justify-between text-xs text-[#AAB4BD] border-b border-white/10 pb-2">
-                      <span className="font-bold uppercase text-white flex items-center gap-2">
-                        <Camera className="h-4 w-4 text-[#1687FF]" /> Evidências Fotográficas Geolocalizadas
+                  <div className="rounded border border-[#23394E] bg-[#08131E] p-3 space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-[#23394E] pb-2">
+                      <span className="font-mono text-[11px] font-bold text-white flex items-center gap-2">
+                        <Camera className="h-3.5 w-3.5 text-[#0066FF]" /> Evidências com Carimbo GPS & Horário
                       </span>
-                      <span className="text-[#10B981] font-bold">● 12 Fotos Sincronizadas</span>
+                      <span className="text-[#0EA76B] font-mono text-[10px] font-bold">12 FOTOS SINCRONIZADAS</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 pt-1 text-[11px] text-[#AAB4BD]">
-                      <div className="rounded-lg bg-white/5 p-2.5 border border-white/5">
-                        <strong className="text-white block">Armação Laje 4</strong>
-                        <span>10:42 · GPS Verificado</span>
+                    <div className="grid grid-cols-3 gap-2 pt-1 text-[11px]">
+                      <div className="rounded bg-[#112030] p-2 border border-[#23394E]">
+                        <strong className="text-white block font-mono text-[10.5px]">Armação Laje 4</strong>
+                        <span className="text-[#5C7084] text-[10px]">10:42 · GPS -23.55, -46.63</span>
                       </div>
-                      <div className="rounded-lg bg-white/5 p-2.5 border border-white/5">
-                        <strong className="text-white block">Alvenaria Bloco B</strong>
-                        <span>14:15 · GPS Verificado</span>
+                      <div className="rounded bg-[#112030] p-2 border border-[#23394E]">
+                        <strong className="text-white block font-mono text-[10.5px]">Alvenaria Bloco B</strong>
+                        <span className="text-[#5C7084] text-[10px]">14:15 · GPS -23.55, -46.63</span>
                       </div>
-                      <div className="rounded-lg bg-white/5 p-2.5 border border-white/5">
-                        <strong className="text-white block">Instalação Hidráulica</strong>
-                        <span>16:30 · GPS Verificado</span>
+                      <div className="rounded bg-[#112030] p-2 border border-[#23394E]">
+                        <strong className="text-white block font-mono text-[10.5px]">Tubulação Hidráulica</strong>
+                        <span className="text-[#5C7084] text-[10px]">16:30 · GPS -23.55, -46.63</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className={styles.mockupFeedGrid}>
-                    <div className={styles.feedCard}>
+                  <div className={styles.mockupFeed}>
+                    <div className={styles.feedItem}>
                       <div className={styles.feedIcon}>
-                        <FileCheck2 />
+                        <FileCheck2 className="h-4 w-4" />
                       </div>
                       <div className={styles.feedText}>
                         <small>ASSINATURA DIGITAL</small>
-                        <strong>Eng. Responsável Validou</strong>
+                        <strong>Eng. Resp. CREA-SP #84102</strong>
                       </div>
                     </div>
-                    <div className={styles.feedCard}>
-                      <div className={styles.feedIcon} style={{ background: 'rgba(22, 135, 255, 0.15)', color: '#1687FF' }}>
-                        <CloudSun />
+                    <div className={styles.feedItem}>
+                      <div className={styles.feedIcon} style={{ background: 'rgba(0, 102, 255, 0.15)', color: '#0066FF' }}>
+                        <CloudSun className="h-4 w-4" />
                       </div>
                       <div className={styles.feedText}>
-                        <small>REGISTRO METEOROLÓGICO</small>
+                        <small>BOLETIM METEOROLÓGICO</small>
                         <strong>Condições Próprias de Trabalho</strong>
                       </div>
                     </div>
@@ -463,54 +886,54 @@ export function LandingPage() {
                 </div>
               )}
 
-              {/* CONTEÚDO DA ABA 3: FINANCEIRO & MEDIÇÕES */}
+              {/* ABA 3: FINANCEIRO & MEDIÇÕES */}
               {activeTab === 'financeiro' && (
                 <div>
-                  <div className={styles.mockupKpiGrid}>
+                  <div className={styles.kpiStrip}>
                     <div className={styles.kpiCard}>
-                      <span className={styles.kpiLabel}>Medição Atual</span>
+                      <span className={styles.kpiLabel}>Boletim de Medição</span>
                       <div className={styles.kpiValue}>R$ 284k</div>
                       <span className={styles.kpiMeta}>BM-06 Aprovado</span>
                     </div>
                     <div className={styles.kpiCard}>
-                      <span className={styles.kpiLabel}>Custo vs Previsto</span>
+                      <span className={styles.kpiLabel}>Desvio Orçamentário</span>
                       <div className={styles.kpiValue}>-1,8%</div>
                       <span className={styles.kpiMeta}>Economia no orçamento</span>
                     </div>
                     <div className={styles.kpiCard}>
-                      <span className={styles.kpiLabel}>Saldo Contratos</span>
+                      <span className={styles.kpiLabel}>Saldo de Contratos</span>
                       <div className={styles.kpiValue}>R$ 1,4M</div>
-                      <span className={styles.kpiMeta} style={{ color: '#1687FF' }}>8 Empreiteiros</span>
+                      <span className={styles.kpiMeta} style={{ color: '#0066FF' }}>8 Empreiteiros</span>
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-xl border border-white/10 bg-[#0B1F33]/60 p-4 space-y-3">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[#AAB4BD] font-bold uppercase">Execução Orçamentária da Obra</span>
+                  <div className="rounded border border-[#23394E] bg-[#08131E] p-3 space-y-2.5 text-xs">
+                    <div className="flex justify-between items-center text-[11px] font-mono">
+                      <span className="text-[#8E9EAF] uppercase">Execução Orçamentária da Obra</span>
                       <span className="text-white font-bold">R$ 2.450.000 / R$ 3.600.000 (68%)</span>
                     </div>
-                    <div className="h-2.5 w-full rounded-full bg-white/10 overflow-hidden">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[#1687FF] to-[#10B981]" style={{ width: '68%' }} />
+                    <div className="h-2 w-full rounded bg-[#112030] overflow-hidden border border-[#23394E]">
+                      <div className="h-full bg-[#0066FF]" style={{ width: '68%' }} />
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs pt-1 text-[#AAB4BD]">
-                      <span>Mão de Obra Direta: <strong className="text-white">R$ 940k</strong></span>
-                      <span>Materiais & Insumos: <strong className="text-white">R$ 1.510k</strong></span>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 text-[#8E9EAF] font-mono">
+                      <span>Mão de Obra: <strong className="text-white">R$ 940.000</strong></span>
+                      <span>Materiais & Concreto: <strong className="text-white">R$ 1.510.000</strong></span>
                     </div>
                   </div>
 
-                  <div className={styles.mockupFeedGrid}>
-                    <div className={styles.feedCard}>
+                  <div className={styles.mockupFeed}>
+                    <div className={styles.feedItem}>
                       <div className={styles.feedIcon}>
-                        <WalletCards />
+                        <WalletCards className="h-4 w-4" />
                       </div>
                       <div className={styles.feedText}>
                         <small>PRÓXIMO DESEMBOLSO</small>
                         <strong>Folha Empreiteiros (15/09)</strong>
                       </div>
                     </div>
-                    <div className={styles.feedCard}>
-                      <div className={styles.feedIcon} style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10B981' }}>
-                        <Coins />
+                    <div className={styles.feedItem}>
+                      <div className={styles.feedIcon} style={{ background: 'rgba(14, 167, 107, 0.15)', color: '#0EA76B' }}>
+                        <Coins className="h-4 w-4" />
                       </div>
                       <div className={styles.feedText}>
                         <small>MARGEM OPERACIONAL</small>
@@ -521,10 +944,10 @@ export function LandingPage() {
                 </div>
               )}
 
-              {/* CONTEÚDO DA ABA 4: QUALIDADE & SST */}
+              {/* ABA 4: QUALIDADE & SST */}
               {activeTab === 'qualidade' && (
                 <div>
-                  <div className={styles.mockupKpiGrid}>
+                  <div className={styles.kpiStrip}>
                     <div className={styles.kpiCard}>
                       <span className={styles.kpiLabel}>Conformidade FVS</span>
                       <div className={styles.kpiValue}>98,2%</div>
@@ -533,7 +956,7 @@ export function LandingPage() {
                     <div className={styles.kpiCard}>
                       <span className={styles.kpiLabel}>Não Conformidades</span>
                       <div className={styles.kpiValue}>02</div>
-                      <span className={styles.kpiMeta} style={{ color: '#F59E0B' }}>Em Tratamento</span>
+                      <span className={styles.kpiMeta} style={{ color: '#E87A18' }}>Em Tratamento</span>
                     </div>
                     <div className={styles.kpiCard}>
                       <span className={styles.kpiLabel}>DDS Realizado</span>
@@ -542,38 +965,38 @@ export function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-xl border border-white/10 bg-[#0B1F33]/60 p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-[#AAB4BD] border-b border-white/10 pb-2">
-                      <span className="font-bold uppercase text-white flex items-center gap-2">
-                        <ShieldCheck className="h-4 w-4 text-[#10B981]" /> Inspeções Recentes de Canteiro
+                  <div className="rounded border border-[#23394E] bg-[#08131E] p-3 space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-[#23394E] pb-2 font-mono text-[11px]">
+                      <span className="text-white font-bold flex items-center gap-2">
+                        <ShieldCheck className="h-3.5 w-3.5 text-[#0EA76B]" /> Inspeções Recentes de Canteiro
                       </span>
-                      <span className="text-[#10B981] font-bold">PBQP-H / ISO 9001</span>
+                      <span className="text-[#0EA76B] font-bold">PBQP-H / ISO 9001</span>
                     </div>
-                    <div className="space-y-1.5 pt-1 text-xs">
-                      <div className="flex justify-between items-center rounded-lg bg-white/5 px-3 py-2">
+                    <div className="space-y-1.5 pt-1 text-[11px] font-mono">
+                      <div className="flex justify-between items-center rounded bg-[#112030] px-2.5 py-1.5 border border-[#23394E]">
                         <span className="text-white">FVS 14 - Desforma e Cura de Concreto</span>
-                        <span className="text-[#10B981] font-bold">APROVADA</span>
+                        <span className="text-[#0EA76B] font-bold">APROVADA</span>
                       </div>
-                      <div className="flex justify-between items-center rounded-lg bg-white/5 px-3 py-2">
+                      <div className="flex justify-between items-center rounded bg-[#112030] px-2.5 py-1.5 border border-[#23394E]">
                         <span className="text-white">FVS 15 - Prumo e Esquadro de Alvenaria</span>
-                        <span className="text-[#10B981] font-bold">APROVADA</span>
+                        <span className="text-[#0EA76B] font-bold">APROVADA</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className={styles.mockupFeedGrid}>
-                    <div className={styles.feedCard}>
-                      <div className={styles.feedIcon} style={{ color: '#10B981', background: 'rgba(16, 185, 129, 0.15)' }}>
-                        <Check />
+                  <div className={styles.mockupFeed}>
+                    <div className={styles.feedItem}>
+                      <div className={styles.feedIcon} style={{ color: '#0EA76B', background: 'rgba(14, 167, 107, 0.15)' }}>
+                        <Check className="h-4 w-4" />
                       </div>
                       <div className={styles.feedText}>
                         <small>EPI & SEGURANÇA</small>
                         <strong>100% dos Colaboradores Aptos</strong>
                       </div>
                     </div>
-                    <div className={styles.feedCard}>
+                    <div className={styles.feedItem}>
                       <div className={styles.feedIcon}>
-                        <Activity />
+                        <Activity className="h-4 w-4" />
                       </div>
                       <div className={styles.feedText}>
                         <small>AUDITORIA INTERNA</small>
@@ -583,107 +1006,119 @@ export function LandingPage() {
                   </div>
                 </div>
               )}
+
+              {/* SELO DE PRANCHA TÉCNICA (SHEET STAMP) */}
+              <div className={styles.pranchaFooterStamp}>
+                <span>RESPONSÁVEL TÉCNICO: ENG. ALEXANDRE COSTA · CREA-SP #84102</span>
+                <span className={styles.stampBadge}>
+                  <CheckCircle2 className="h-3 w-3" /> BASE DE DADOS SINCRONIZADA
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ====================================================================
-          METRICS STRIP (PROVA SOCIAL CONSOLIDADA)
+          FAIXA DE PROVA SOCIAL CONSOLIDADA (TELEMETRIA AUDITÁVEL)
           ==================================================================== */}
       <section className={styles.metricsBand}>
         <div className={styles.metricsGrid}>
-          <div className={styles.metricItem}>
+          <div className={styles.metricCard}>
             <div className={styles.metricNumber}>
               +R$ 1.8 <em>Bi</em>
             </div>
-            <div className={styles.metricTitle}>Valor de Obras Monitoradas</div>
-            <div className={styles.metricSub}>Portfólio com controle em tempo real</div>
+            <div className={styles.metricTitle}>Volume de Obras sob Gestão</div>
+            <div className={styles.metricSub}>Portfólio monitorado com Curva S e controle de avanço real</div>
           </div>
-          <div className={styles.metricItem}>
+
+          <div className={styles.metricCard}>
             <div className={styles.metricNumber}>
               +940 <em>Mil</em>
             </div>
-            <div className={styles.metricTitle}>Diários de Obra Gerados</div>
-            <div className={styles.metricSub}>Registros no canteiro com foto e clima</div>
+            <div className={styles.metricTitle}>Diários de Obra Homologados</div>
+            <div className={styles.metricSub}>Registros no canteiro com foto, clima oficial e GPS</div>
           </div>
-          <div className={styles.metricItem}>
+
+          <div className={styles.metricCard}>
             <div className={styles.metricNumber}>
               38% <em>Menos</em>
             </div>
             <div className={styles.metricTitle}>Tempo Gasto em Relatórios</div>
-            <div className={styles.metricSub}>Engenharia focada na produção</div>
+            <div className={styles.metricSub}>Engenheiros focados na produção e controle de prazos</div>
           </div>
-          <div className={styles.metricItem}>
+
+          <div className={styles.metricCard}>
             <div className={styles.metricNumber}>
               99.4% <em>Auditável</em>
             </div>
-            <div className={styles.metricTitle}>Conformidade e Histórico</div>
-            <div className={styles.metricSub}>Evidências jurídicas e técnicas salvas</div>
+            <div className={styles.metricTitle}>Conformidade & Blindagem</div>
+            <div className={styles.metricSub}>Evidências jurídicas salvas com assinatura digital</div>
           </div>
         </div>
       </section>
 
       {/* ====================================================================
-          PROBLEM VS SOLUTION (O CAOS DAS PLANILHAS VS RIGOR)
+          O CAOS DO IMPROVISO VS RIGOR (ANTES X DEPOIS)
           ==================================================================== */}
       <section id="plataforma" className={styles.problemSection}>
         <div className={styles.sectionInner}>
           <div className={styles.sectionHeader}>
-            <span className={styles.sectionKicker}>O Desafio da Construção Civil</span>
+            <span className={styles.sectionKicker}>
+              <AlertTriangle className="h-3.5 w-3.5" /> Diagnóstico de Canteiro
+            </span>
             <h2 className={styles.sectionTitle}>
               O custo invisível do improviso na gestão de obras.
             </h2>
             <p className={styles.sectionSubtitle}>
-              Quando as informações estão espalhadas em dezenas de planilhas e grupos de WhatsApp,
-              os desvios de prazo e custo só são descobertos quando já é tarde demais.
+              Quando as decisões dependem de planilhas paralelas e conversas soltas no WhatsApp, os desvios de prazo e custo só chegam à diretoria quando já se tornaram prejuízo irreversível.
             </p>
           </div>
 
           <div className={styles.problemGrid}>
-            {/* CARD 1: CAOS TRADICIONAL */}
+            {/* CARD CAOS TRADICIONAL */}
             <div className={styles.problemCardChaos}>
               <span className={styles.cardBadgeChaos}>
-                <AlertTriangle className="h-3.5 w-3.5" /> Gestão Tradicional Desconectada
+                <ShieldAlert className="h-3.5 w-3.5" /> Gestão Tradicional Desconectada
               </span>
               <h3 className={styles.cardHeadingChaos}>Onde a Operação Sangra</h3>
 
               <div className={styles.comparisonList}>
                 <div className={styles.comparisonItem}>
-                  <X className="text-red-500" />
-                  <div>
-                    <strong className="text-slate-900">Planilhas Desconectadas e Desatualizadas</strong>
-                    <p>Cada engenheiro usa uma versão. Ninguém sabe qual é a planilha oficial do cronograma.</p>
+                  <X className={styles.comparisonIconFail} />
+                  <div className={styles.comparisonText}>
+                    <strong className="text-slate-900">Planilhas Concorrentes e Desatualizadas</strong>
+                    <p>O engenheiro de campo tem uma versão, o setor de compras tem outra e ninguém sabe qual é o cronograma oficial.</p>
                   </div>
                 </div>
 
                 <div className={styles.comparisonItem}>
-                  <X className="text-red-500" />
-                  <div>
-                    <strong className="text-slate-900">Canteiro Invisível e Fotos Soltas no WhatsApp</strong>
-                    <p>Evidências se perdem nas conversas pessoais e não há rastreabilidade de decisões.</p>
+                  <X className={styles.comparisonIconFail} />
+                  <div className={styles.comparisonText}>
+                    <strong className="text-slate-900">Evidências Perdidas em Grupos de WhatsApp</strong>
+                    <p>Fotos de canteiro ficam no celular pessoal do encarregado, sem geolocalização nem rastreabilidade técnica.</p>
                   </div>
                 </div>
 
                 <div className={styles.comparisonItem}>
-                  <X className="text-red-500" />
-                  <div>
-                    <strong className="text-slate-900">Desvios Financeiros Descobertos Tarde</strong>
-                    <p>O estouro de orçamento só chega à diretoria semanas após a medição já ter sido paga.</p>
+                  <X className={styles.comparisonIconFail} />
+                  <div className={styles.comparisonText}>
+                    <strong className="text-slate-900">Estouro de Orçamento Descoberto Tarde</strong>
+                    <p>O desvio financeiro só é percebido 3 semanas após a medição já ter sido liberada e paga ao empreiteiro.</p>
                   </div>
                 </div>
 
                 <div className={styles.comparisonItem}>
-                  <X className="text-red-500" />
-                  <div>
-                    <strong className="text-slate-900">Insegurança Jurídica com Empreiteiros</strong>
-                    <p>Falta de diário de obra com assinatura gera riscos em pleitos trabalhistas e contratuais.</p>
+                  <X className={styles.comparisonIconFail} />
+                  <div className={styles.comparisonText}>
+                    <strong className="text-slate-900">Vulnerabilidade Jurídica com Terceiros</strong>
+                    <p>Falta de RDO diário com assinatura gera insegurança grave em notificações, multas e pleitos trabalhistas.</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* CARD 2: COM O RIGOR */}
+            {/* CARD PRECISÃO RIGOR */}
             <div className={styles.problemCardRigor}>
               <span className={styles.cardBadgeRigor}>
                 <Zap className="h-3.5 w-3.5" /> Precisão RIGOR
@@ -692,34 +1127,34 @@ export function LandingPage() {
 
               <div className={styles.comparisonList}>
                 <div className={styles.comparisonItem}>
-                  <CheckCircle2 className="text-[#1687FF]" />
-                  <div>
-                    <strong className="text-white">Base de Dados Única e Conectada</strong>
-                    <p>Do primeiro planejamento ao último as-built, toda a equipe trabalha com a mesma verdade.</p>
+                  <CheckCircle2 className={styles.comparisonIconPass} />
+                  <div className={styles.comparisonText}>
+                    <strong>Base Técnica Única e Centralizada</strong>
+                    <p>Do planejamento inicial ao último as-built, canteiro e diretoria trabalham sobre a mesma verdade de dados.</p>
                   </div>
                 </div>
 
                 <div className={styles.comparisonItem}>
-                  <CheckCircle2 className="text-[#1687FF]" />
-                  <div>
-                    <strong className="text-white">RDO Digital em 3 Minutos no Celular</strong>
-                    <p>Fotos carimbadas com GPS, clima automático e efetivo registrado sem burocracia.</p>
+                  <CheckCircle2 className={styles.comparisonIconPass} />
+                  <div className={styles.comparisonText}>
+                    <strong>RDO Digital em 3 Minutos no Celular</strong>
+                    <p>Fotos carimbadas com GPS, clima meteorológico automático e efetivo registrado sem papel ou burocracia.</p>
                   </div>
                 </div>
 
                 <div className={styles.comparisonItem}>
-                  <CheckCircle2 className="text-[#1687FF]" />
-                  <div>
-                    <strong className="text-white">Alertas Preventivos de Custo e Curva S</strong>
-                    <p>Índices SPI e CPI alertam desvios no início, permitindo ação corretiva imediata.</p>
+                  <CheckCircle2 className={styles.comparisonIconPass} />
+                  <div className={styles.comparisonText}>
+                    <strong>Alertas Preventivos de SPI e Curva S</strong>
+                    <p>Identifique desvios de caminho crítico na primeira semana de atraso, permitindo correção antes do estouro.</p>
                   </div>
                 </div>
 
                 <div className={styles.comparisonItem}>
-                  <CheckCircle2 className="text-[#1687FF]" />
-                  <div>
-                    <strong className="text-white">Blindagem Jurídica e Histórico Imutável</strong>
-                    <p>RDOs homologados com assinatura eletrônica e relatórios executivos em 1 clique.</p>
+                  <CheckCircle2 className={styles.comparisonIconPass} />
+                  <div className={styles.comparisonText}>
+                    <strong>Histórico Imutável e Relatórios em 1 Clique</strong>
+                    <p>RDOs homologados eletronicamente e databooks técnicos completos para auditorias de bancos e investidores.</p>
                   </div>
                 </div>
               </div>
@@ -729,31 +1164,33 @@ export function LandingPage() {
       </section>
 
       {/* ====================================================================
-          MÓDULOS DA PLATAFORMA (6 PILARES)
+          MÓDULOS DE ENGENHARIA (6 PILARES OPERACIONAIS)
           ==================================================================== */}
       <section id="modulos" className={styles.platformSection}>
         <div className={styles.sectionInner}>
           <div className={styles.sectionHeader}>
-            <span className={styles.sectionKicker}>Arquitetura de Precisão</span>
+            <span className={styles.sectionKicker}>
+              <Layers className="h-3.5 w-3.5" /> Arquitetura de Sistemas
+            </span>
             <h2 className={styles.sectionTitle}>
               Uma plataforma completa para todas as etapas da obra.
             </h2>
             <p className={styles.sectionSubtitle}>
-              Módulos projetados especificamente para a rotina da engenharia e da gestão construtiva.
+              Módulos estruturados de acordo com o vocabulário e a rotina da engenharia civil brasileira.
             </p>
           </div>
 
           <div className={styles.modulesGrid}>
-            {modulesList.map((m, idx) => {
+            {modulesList.map((m) => {
               const Icon = m.icon;
               return (
-                <div key={idx} className={styles.moduleCard}>
+                <div key={m.code} className={styles.moduleCard}>
                   <div>
                     <div className={styles.moduleTop}>
-                      <div className={styles.moduleIcon}>
-                        <Icon className="h-6 w-6" />
+                      <div className={styles.moduleIconBox}>
+                        <Icon className="h-5 w-5" />
                       </div>
-                      <span className={styles.moduleNumber}>0{idx + 1}</span>
+                      <span className={styles.moduleCode}>{m.code}</span>
                     </div>
 
                     <h3 className={styles.moduleTitle}>{m.title}</h3>
@@ -761,8 +1198,8 @@ export function LandingPage() {
                   </div>
 
                   <div className={styles.moduleFooter}>
-                    <span>{m.tag}</span>
-                    <ArrowRight />
+                    <span>{m.dimensionTag}</span>
+                    <ArrowRight className="h-4 w-4" />
                   </div>
                 </div>
               );
@@ -772,29 +1209,30 @@ export function LandingPage() {
       </section>
 
       {/* ====================================================================
-          SIMULADOR DE ROI (CALCULADORA DE ECONOMIA)
+          SIMULADOR DE ROI (EFICIÊNCIA OPERACIONAL)
           ==================================================================== */}
       <section id="simulador" className={styles.roiSection}>
         <div className={styles.sectionInner}>
           <div className={styles.sectionHeader}>
-            <span className={styles.sectionKicker} style={{ color: '#1687FF' }}>
-              Simulador de Eficiência
+            <span className={styles.sectionKicker} style={{ color: '#388BFD' }}>
+              <Sliders className="h-3.5 w-3.5" /> Simulador de Eficiência Construtiva
             </span>
-            <h2 className={styles.sectionTitle} style={{ color: '#F5F7F6' }}>
+            <h2 className={styles.sectionTitle} style={{ color: '#F4F6F8' }}>
               Calcule o Retorno do RIGOR na sua Construtora.
             </h2>
-            <p className={styles.sectionSubtitle} style={{ color: '#AAB4BD' }}>
-              Descubra quantas horas técnicas e quanto dinheiro sua operação economiza ao eliminar o improviso.
+            <p className={styles.sectionSubtitle} style={{ color: '#8E9EAF' }}>
+              Ajuste o volume de obras e o orçamento médio para projetar o impacto financeiro da governança técnica.
             </p>
           </div>
 
           <div className={styles.roiCard}>
+            {/* CONTROLES DE RÉGUA TÉCNICA */}
             <div>
-              <h3 className="font-heading text-3xl font-bold uppercase text-white">
-                Parâmetros da sua Operação
+              <h3 className="font-heading text-2xl font-bold uppercase text-white tracking-wide">
+                Parâmetros da Operação
               </h3>
-              <p className="mt-2 text-sm text-[#AAB4BD]">
-                Ajuste os controles abaixo de acordo com a carteira de obras atual da sua empresa:
+              <p className="mt-1 text-xs text-[#8E9EAF] font-mono">
+                Defina a carteira simultânea sob gestão da sua empresa:
               </p>
 
               <div className={styles.sliderGroup}>
@@ -812,15 +1250,16 @@ export function LandingPage() {
                     value={roiObras}
                     onChange={(e) => setRoiObras(Number(e.target.value))}
                     className={styles.customRange}
+                    aria-label="Número de obras ativas"
                   />
-                  <div className="flex justify-between text-[11px] text-[#AAB4BD]">
+                  <div className="flex justify-between font-mono text-[10px] text-[#5C7084]">
                     <span>1 obra</span>
                     <span>12 obras</span>
                     <span>25 obras</span>
                   </div>
                 </div>
 
-                {/* SLIDER 2: VALOR MÉDIO DA OBRA */}
+                {/* SLIDER 2: ORÇAMENTO MÉDIO POR OBRA */}
                 <div className={styles.sliderBox}>
                   <div className={styles.sliderHead}>
                     <label>Orçamento Médio por Obra</label>
@@ -834,8 +1273,9 @@ export function LandingPage() {
                     value={roiValorMedio}
                     onChange={(e) => setRoiValorMedio(Number(e.target.value))}
                     className={styles.customRange}
+                    aria-label="Orçamento médio por obra"
                   />
-                  <div className="flex justify-between text-[11px] text-[#AAB4BD]">
+                  <div className="flex justify-between font-mono text-[10px] text-[#5C7084]">
                     <span>R$ 500k</span>
                     <span>R$ 10M</span>
                     <span>R$ 20M</span>
@@ -848,33 +1288,24 @@ export function LandingPage() {
             <div className={styles.roiResultsBox}>
               <div className={styles.roiKpi}>
                 <small>ECONOMIA TOTAL ESTIMADA / ANO</small>
-                <strong>
-                  <em>{formatMoney(roiCalculations.economiaTotalAno)}</em>
-                </strong>
-                <p>Prevenção de desvios + ganho de produtividade técnica.</p>
+                <strong>{formatMoney(roiCalculations.economiaTotalAno)}</strong>
+                <p>Prevenção de 2.4% de retrabalho + ganho em produtividade de engenharia.</p>
               </div>
 
-              <div className="border-t border-white/10 pt-4 grid grid-cols-2 gap-4">
-                <div>
-                  <small className="text-[10px] font-bold text-[#AAB4BD] uppercase block">Horas Poupadas / Mês</small>
-                  <span className="font-heading text-2xl font-bold text-white mt-1 block">
-                    ~{roiCalculations.horasEconomizadas}h
-                  </span>
-                  <span className="text-[11px] text-[#1687FF]">Menos relatórios manuais</span>
+              <div className={styles.roiBreakdownGrid}>
+                <div className={styles.breakdownItem}>
+                  <small>Horas Técnicas Poupadas</small>
+                  <span>~{roiCalculations.horasEconomizadas}h / mês</span>
+                  <sub>Menos relatórios manuais</sub>
                 </div>
-                <div>
-                  <small className="text-[10px] font-bold text-[#AAB4BD] uppercase block">Valor sob Gestão</small>
-                  <span className="font-heading text-2xl font-bold text-white mt-1 block">
-                    {formatMoney(roiCalculations.totalSobGestao)}
-                  </span>
-                  <span className="text-[11px] text-[#10B981]">100% Monitorado</span>
+                <div className={styles.breakdownItem}>
+                  <small>Capital sob Governança</small>
+                  <span>{formatMoney(roiCalculations.totalSobGestao)}</span>
+                  <sub>100% Rastreável</sub>
                 </div>
               </div>
 
-              <a
-                href="#planos"
-                className="mt-4 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#1687FF] text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-[#1687FF]/30 transition hover:brightness-110"
-              >
+              <a href="#planos" className={styles.roiCtaBtn}>
                 Garantir Essa Eficiência <ArrowRight className="h-4 w-4" />
               </a>
             </div>
@@ -883,54 +1314,53 @@ export function LandingPage() {
       </section>
 
       {/* ====================================================================
-          METODOLOGIA (DO CANTEIRO À DIRETORIA EM 3 ETAPAS)
+          METODOLOGIA EM 3 PASSOS (DO CANTEIRO À DIRETORIA)
           ==================================================================== */}
       <section id="como-funciona" className={styles.workflowSection}>
         <div className={styles.sectionInner}>
           <div className={styles.sectionHeader}>
-            <span className={styles.sectionKicker}>Metodologia RIGOR</span>
+            <span className={styles.sectionKicker}>
+              <Activity className="h-3.5 w-3.5" /> Metodologia de Precisão
+            </span>
             <h2 className={styles.sectionTitle}>
               O dado nasce no canteiro. A decisão chega à gestão.
             </h2>
             <p className={styles.sectionSubtitle}>
-              Como transformamos a rotina caótica da obra em um fluxo contínuo de inteligência operacional.
+              Como transformamos a rotina fragmentada da obra em um fluxo contínuo de inteligência executiva.
             </p>
           </div>
 
           <div className={styles.stepsGrid}>
             <div className={styles.stepCard}>
               <div className={styles.stepHead}>
-                <div className={styles.stepBadge}>01</div>
-                <Layers className="h-6 w-6 text-[#1687FF]" />
+                <span className={styles.stepBadge}>01</span>
+                <Layers className="h-5 w-5 text-[#0066FF]" />
               </div>
-              <h3>Estruture com Precisão</h3>
+              <h3>Estruture a EAP e o Cronograma Base</h3>
               <p>
-                Cadastre obras, importe cronogramas de planilhas em segundos, defina metas físicas,
-                equipes responsáveis e aloque orçamentos por etapa construtiva.
+                Importe cronogramas do Excel em segundos, defina a linha de base física, distribua frentes de serviço e aloque orçamentos por centro de custo de forma intuitiva.
               </p>
             </div>
 
             <div className={styles.stepCard}>
               <div className={styles.stepHead}>
-                <div className={styles.stepBadge}>02</div>
-                <HardHat className="h-6 w-6 text-[#1687FF]" />
+                <span className={styles.stepBadge}>02</span>
+                <HardHat className="h-5 w-5 text-[#0066FF]" />
               </div>
               <h3>Colete no Campo sem Fricção</h3>
               <p>
-                Encarregados e engenheiros registram o RDO pelo celular em menos de 3 minutos,
-                com fotos carimbadas, clima automatizado, registro de equipe e assinaturas.
+                Encarregados e engenheiros alimentam o diário de obra offline pelo celular em 3 minutos, com fotos carimbadas por GPS, efetivo por função e assinaturas digitais.
               </p>
             </div>
 
             <div className={styles.stepCard}>
               <div className={styles.stepHead}>
-                <div className={styles.stepBadge}>03</div>
-                <BarChart3 className="h-6 w-6 text-[#1687FF]" />
+                <span className={styles.stepBadge}>03</span>
+                <BarChart3 className="h-5 w-5 text-[#0066FF]" />
               </div>
-              <h3>Decida com Previsibilidade</h3>
+              <h3>Decida por Índices SPI e Curva S</h3>
               <p>
-                O painel executivo consolida Curvas S, boletins de medição e alertas de desvio em
-                tempo real, permitindo correções rápidas antes que prazos estourem.
+                A diretoria acompanha boletins de medição consolidados, margens operacionais e alertas preventivos em tempo real, corrigindo desvios antes que virem prejuízo.
               </p>
             </div>
           </div>
@@ -938,15 +1368,17 @@ export function LandingPage() {
       </section>
 
       {/* ====================================================================
-          TABELA DE PLANOS & PREÇOS
+          TABELA DE PLANOS & PREÇOS COM SELETOR DE CICLO
           ==================================================================== */}
       <section id="planos" className={styles.pricingSection}>
         <div className={styles.sectionInner}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionKicker}>Planos Transparentes</span>
+          <div className={styles.sectionHeader} style={{ textAlign: 'center', margin: '0 auto 36px auto' }}>
+            <span className={styles.sectionKicker}>
+              <Coins className="h-3.5 w-3.5" /> Planos Transparentes
+            </span>
             <h2 className={styles.sectionTitle}>Escolha o ritmo da sua operação.</h2>
             <p className={styles.sectionSubtitle}>
-              Todos os planos incluem suporte de implantação, atualizações contínuas e dados 100% isolados.
+              Todos os planos incluem suporte assistido de implantação, atualizações contínuas e dados 100% isolados.
             </p>
           </div>
 
@@ -984,20 +1416,17 @@ export function LandingPage() {
                   key={key}
                   className={`${styles.planCard} ${isPro ? styles.featuredPlan : ''}`}
                 >
-                  {isPro && <div className={styles.planTag}>MAIS ESCOLHIDO</div>}
+                  {isPro && <div className={styles.planTag}>MAIS ADOTADO</div>}
 
                   <div>
                     <div className={styles.planHead}>
-                      <span className="text-xs font-black tracking-widest text-[#1687FF] uppercase">
-                        Plano {key}
-                      </span>
-                      <span className="text-xs font-bold opacity-60">
-                        {key === 'STARTER' ? '01' : key === 'PRO' ? '02' : '03'}
+                      <span className="font-mono text-[11px] font-black tracking-widest text-[#0066FF] uppercase">
+                        PLANO {key}
                       </span>
                     </div>
 
                     <h3 className={styles.planName}>{plan.name}</h3>
-                    <p className="mt-2 text-xs opacity-75 min-h-[34px]">{plan.description}</p>
+                    <p className="mt-1 text-xs opacity-75 min-h-[34px]">{plan.description}</p>
 
                     <div className={styles.planPrice}>
                       <sup>R$</sup>
@@ -1007,21 +1436,21 @@ export function LandingPage() {
 
                     <p className={styles.planCycleInfo}>
                       {billing === 'monthly'
-                        ? 'Cobrança mensal flexível.'
+                        ? 'Cobrança mensal sem fidelidade.'
                         : `${formatMoney(totalCyclePrice)} faturado no ciclo ${cycle.label.toLowerCase()}.`}
                     </p>
 
                     <div className={styles.planLimits}>
                       <span>
-                        <Building2 />
+                        <Building2 className="h-4 w-4 text-[#0066FF]" />
                         {Number.isFinite(plan.limits.obras)
                           ? `${plan.limits.obras} Obras ativas`
-                          : 'Obras ilimitadas'}
+                          : 'Obras simultâneas ilimitadas'}
                       </span>
                       <span>
-                        <UsersRound />
+                        <UsersRound className="h-4 w-4 text-[#0066FF]" />
                         {Number.isFinite(plan.limits.users)
-                          ? `${plan.limits.users} Usuários`
+                          ? `${plan.limits.users} Usuários liberados`
                           : 'Usuários ilimitados'}
                       </span>
                     </div>
@@ -1029,7 +1458,7 @@ export function LandingPage() {
                     <ul className={styles.planFeatures}>
                       {plan.features.map((feat, fIdx) => (
                         <li key={fIdx}>
-                          <Check />
+                          <Check className="h-4 w-4" />
                           <span>{feat}</span>
                         </li>
                       ))}
@@ -1040,8 +1469,8 @@ export function LandingPage() {
                     href={`mailto:comercial@rigorobras.com.br?subject=Interesse no plano ${plan.name} (${cycle.label})`}
                     className={
                       isPro
-                        ? 'flex h-12 items-center justify-center gap-2 rounded-xl bg-[#1687FF] text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-[#1687FF]/40 transition hover:brightness-110'
-                        : 'flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-black uppercase tracking-wider text-[#0B1F33] transition hover:bg-[#0B1F33] hover:text-white'
+                        ? 'mt-6 flex h-12 items-center justify-center gap-2 rounded bg-[#0066FF] text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-[#0066FF]/40 transition hover:brightness-110'
+                        : 'mt-6 flex h-12 items-center justify-center gap-2 rounded border border-[#23394E] bg-white text-xs font-black uppercase tracking-wider text-[#08131E] transition hover:bg-[#08131E] hover:text-white'
                     }
                   >
                     Solicitar Demonstração <ArrowRight className="h-4 w-4" />
@@ -1051,8 +1480,8 @@ export function LandingPage() {
             })}
           </div>
 
-          <p className="mt-8 text-center text-xs text-[#354654]">
-            Cobrança segura com cartão de crédito ou boleto bancário via AbacatePay. Cancele quando quiser.
+          <p className="mt-8 text-center font-mono text-[11px] text-[#5C7084]">
+            Cobrança segura com cartão de crédito ou boleto bancário. Cancelamento simplificado a qualquer momento.
           </p>
         </div>
       </section>
@@ -1062,11 +1491,13 @@ export function LandingPage() {
           ==================================================================== */}
       <section id="faq" className={styles.faqSection}>
         <div className={styles.sectionInner}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionKicker}>Dúvidas Frequentes</span>
-            <h2 className={styles.sectionTitle}>Perguntas e Respostas.</h2>
+          <div className={styles.sectionHeader} style={{ textAlign: 'center', margin: '0 auto 48px auto' }}>
+            <span className={styles.sectionKicker}>
+              <FileCheck2 className="h-3.5 w-3.5" /> Esclarecimentos Técnicos
+            </span>
+            <h2 className={styles.sectionTitle}>Perguntas Frequentes de Engenheiros e Diretores.</h2>
             <p className={styles.sectionSubtitle}>
-              Tudo o que você precisa saber sobre a plataforma RIGOR e o processo de adoção.
+              Detalhes práticos sobre implantação, rotina de campo e segurança da informação.
             </p>
           </div>
 
@@ -1104,29 +1535,29 @@ export function LandingPage() {
         <div className={styles.sectionInner}>
           <div className={styles.finalCtaCard}>
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-[#1687FF]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#1687FF]" />
-                Próximo Passo
+              <div className="inline-flex items-center gap-2 rounded border border-[#23394E] bg-[#08131E] px-3 py-1 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#0066FF]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#0066FF]" />
+                PRÓXIMO PASSO EXECUTIVO
               </div>
               <h2 className={styles.finalCtaTitle}>
                 Sua obra já é complexa.<br />
                 <span>A gestão não precisa ser.</span>
               </h2>
               <p className={styles.finalCtaDesc}>
-                Junte-se às construtoras e engenharias que profissionalizaram sua operação do canteiro à diretoria.
+                Junte-se às construtoras e engenharias que eliminaram o improviso e profissionalizaram o controle do canteiro à diretoria.
               </p>
             </div>
 
-            <div className="flex flex-col gap-3.5">
+            <div className="flex flex-col gap-3">
               <a
                 href="mailto:comercial@rigorobras.com.br?subject=Quero agendar uma demonstração do RIGOR"
-                className="flex h-14 items-center justify-center gap-3 rounded-xl bg-[#1687FF] text-sm font-black uppercase tracking-wider text-white shadow-xl shadow-[#1687FF]/40 transition hover:brightness-110"
+                className="flex h-13 items-center justify-center gap-2 rounded bg-[#0066FF] text-xs font-black uppercase tracking-wider text-white shadow-xl shadow-[#0066FF]/40 transition hover:brightness-110"
               >
-                Agendar Demonstração Guiada <ArrowRight className="h-5 w-5" />
+                Agendar Demonstração Guiada <ArrowRight className="h-4 w-4" />
               </a>
               <Link
                 href="/login"
-                className="flex h-14 items-center justify-center gap-3 rounded-xl border border-white/20 bg-white/5 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-white/10"
+                className="flex h-13 items-center justify-center gap-2 rounded border border-[#23394E] bg-[#08131E] text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#112030]"
               >
                 Acessar Plataforma RIGOR
               </Link>
@@ -1136,14 +1567,14 @@ export function LandingPage() {
       </section>
 
       {/* ====================================================================
-          FOOTER
+          FOOTER DE ENGENHARIA
           ==================================================================== */}
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <div className={styles.footerBrand}>
-            <RigorLogo markSize={32} theme="dark" showTagline={true} taglineText="BUILT ON PRECISION" />
+            <RigorLogo markSize={30} theme="dark" showTagline={true} taglineText="BUILT ON PRECISION" />
             <p>
-              Sistema completo de gestão de obras, cronogramas, RDO digital e inteligência financeira para a construção civil.
+              Sistema completo de controle de obras civis, Curva S, RDO digital de campo, inteligência financeira e qualidade para a construção civil.
             </p>
           </div>
 
@@ -1158,30 +1589,30 @@ export function LandingPage() {
           </div>
 
           <div className={styles.footerCol}>
-            <h4>Legal & Privacidade</h4>
+            <h4>Governança</h4>
             <ul>
               <li><Link href="/termos">Termos de Uso</Link></li>
-              <li><Link href="/privacidade">Política de Privacidade & LGPD</Link></li>
+              <li><Link href="/privacidade">Privacidade & LGPD</Link></li>
               <li><Link href="/cookies">Gestão de Cookies</Link></li>
             </ul>
           </div>
 
           <div className={styles.footerCol}>
-            <h4>Atendimento</h4>
+            <h4>Central Técnica</h4>
             <ul>
               <li><a href="mailto:comercial@rigorobras.com.br">comercial@rigorobras.com.br</a></li>
               <li><span>Segunda a Sexta · 08h às 18h</span></li>
-              <li className="pt-2 text-xs text-[#10B981] font-bold flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
-                Sistemas 100% Operacionais
+              <li className="pt-2 font-mono text-[11px] text-[#0EA76B] font-bold flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-[#0EA76B] animate-pulse" />
+                99.8% Disponibilidade Operacional
               </li>
             </ul>
           </div>
         </div>
 
         <div className={styles.footerBottom}>
-          <span>© {new Date().getFullYear()} RIGOR. Todos os direitos reservados.</span>
-          <span>BUILT ON PRECISION · CONSISTENT / CLEAR / CONFIDENT</span>
+          <span>© {new Date().getFullYear()} RIGOR TECNOLOGIA EM CONSTRUÇÃO CIVIL. TODOS OS DIREITOS RESERVADOS.</span>
+          <span>BUILT ON PRECISION · PADRÃO CREA-COMPLIANT</span>
         </div>
       </footer>
     </main>

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { AppLayout } from '@/components/layout/app-layout';
+import { ObraProvider } from '@/components/providers/obra-provider';
 import { requireSession } from '@/lib/session-context';
 
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
@@ -12,5 +13,9 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
   if (context.mustChangePassword) redirect('/change-password');
   if (context.role === 'MASTER_ADMIN') redirect('/master');
 
-  return <AppLayout>{children}</AppLayout>;
+  return (
+    <ObraProvider>
+      <AppLayout>{children}</AppLayout>
+    </ObraProvider>
+  );
 }
