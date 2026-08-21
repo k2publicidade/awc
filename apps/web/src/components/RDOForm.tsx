@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { uploadFile } from '@/lib/upload-client';
+import { persistRdoWithPhotos } from '@/lib/rdo-save';
 import { createWatermarkedEvidence, type EvidenceLocation } from '@/lib/photo-evidence';
 import { VoiceInputButton } from '@/components/voice-input-button';
 import { useObra } from '@/hooks/use-obra';
@@ -86,8 +87,12 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   >([]);
 
   // Identificação
-  const [obraId, setObraId] = useState(() => (!isEditing && activeObraId && activeObraId !== 'all' ? activeObraId : ''));
-  const [obraNome, setObraNome] = useState(() => (!isEditing && activeObra?.nome ? activeObra.nome : ''));
+  const [obraId, setObraId] = useState(() =>
+    !isEditing && activeObraId && activeObraId !== 'all' ? activeObraId : ''
+  );
+  const [obraNome, setObraNome] = useState(() =>
+    !isEditing && activeObra?.nome ? activeObra.nome : ''
+  );
   const [data, setData] = useState(new Date().toISOString().slice(0, 10));
   const [engenheiro, setEngenheiro] = useState('');
   const [engenheiroId, setEngenheiroId] = useState('');
@@ -171,7 +176,12 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
 
   // Sync activeObra when creating a new RDO
   useEffect(() => {
-    if (!isEditing && activeObraId && activeObraId !== 'all' && (!obraId || obraId !== activeObraId)) {
+    if (
+      !isEditing &&
+      activeObraId &&
+      activeObraId !== 'all' &&
+      (!obraId || obraId !== activeObraId)
+    ) {
       setObraId(activeObraId);
       if (activeObra?.nome) setObraNome(activeObra.nome);
     }
@@ -384,27 +394,40 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
       body.atividades = atividadesPayload;
       body.status = status;
 
-      let res: Response;
-      if (isEditing) {
-        // For edits, use the PUT endpoint
-        res = await fetch(`/api/rdo/${rdoId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-      } else {
-        // For new RDOs, create via the POST endpoint
-        res = await fetch('/api/rdo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-      }
-
-      const dataRes = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(dataRes.error || 'Erro ao salvar RDO');
-
-      const savedRdoId = isEditing ? rdoId : dataRes.id;
+      await persistRdoWithPhotos({
+        photos: fotos,
+        uploadPhoto: (file) => uploadFile(file, 'rdo'),
+        saveRdo: async () => {
+          const res = await fetch(isEditing ? `/api/rdo/${rdoId}` : '/api/rdo', {
+            method: isEditing ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const dataRes = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(dataRes.error || 'Erro ao salvar RDO');
+          return String(isEditing ? rdoId : dataRes.id);
+        },
+        linkPhoto: async (foto) => {
+          const photoResponse = await fetch('/api/galeria', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              obraId,
+              url: foto.url,
+              legenda: foto.legenda,
+              rdoId: foto.rdoId,
+              data: foto.capturedAt,
+              tags: foto.location
+                ? `GPS:${foto.location.latitude.toFixed(6)},${foto.location.longitude.toFixed(6)}`
+                : 'LOCALIZACAO_INDISPONIVEL',
+            }),
+          });
+          if (!photoResponse.ok) {
+            const photoError = await photoResponse.json().catch(() => ({}));
+            throw new Error(photoError.error || 'Erro ao vincular foto ao RDO');
+          }
+        },
+      });
 
       // Delete removed photos
       for (const id of deletedFotoIds) {
@@ -414,36 +437,6 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
           });
         } catch (err) {
           console.error('Erro ao deletar foto:', err);
-        }
-      }
-
-      // Upload de novas fotos para o storage gerenciado antes de vinculá-las ao RDO.
-      for (const foto of fotos) {
-        if (foto.file) {
-          try {
-            const managedUrl = await uploadFile(foto.file, 'rdo');
-            const photoResponse = await fetch('/api/galeria', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                obraId,
-                url: managedUrl,
-                legenda: foto.legenda,
-                rdoId: savedRdoId,
-                data: foto.capturedAt,
-                tags: foto.location
-                  ? `GPS:${foto.location.latitude.toFixed(6)},${foto.location.longitude.toFixed(6)}`
-                  : 'LOCALIZACAO_INDISPONIVEL',
-              }),
-            });
-            if (!photoResponse.ok) {
-              const photoError = await photoResponse.json().catch(() => ({}));
-              throw new Error(photoError.error || 'Erro ao vincular foto ao RDO');
-            }
-          } catch (err) {
-            console.error('Erro ao fazer upload da foto:', err);
-            throw err;
-          }
         }
       }
 
@@ -514,8 +507,12 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
       <div className="sticky top-[72px] z-20 mb-5 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur lg:hidden">
         <div className="mb-2 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#ff5a00]">RDO em campo</p>
-            <p className="text-xs font-bold text-slate-800">{completedSections} de 6 etapas preenchidas</p>
+            <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#ff5a00]">
+              RDO em campo
+            </p>
+            <p className="text-xs font-bold text-slate-800">
+              {completedSections} de 6 etapas preenchidas
+            </p>
           </div>
           <span className="rounded-full bg-slate-900 px-3 py-1 text-[10px] font-bold text-white">
             {Math.round((completedSections / 6) * 100)}%
@@ -534,7 +531,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
               href={`#rdo-card-${index + 1}`}
               className={cn(
                 'flex min-h-10 flex-col items-center justify-center rounded-lg text-[8.5px] font-bold',
-                index < completedSections ? 'bg-orange-50 text-[#d94c09]' : 'bg-slate-50 text-slate-500'
+                index < completedSections
+                  ? 'bg-orange-50 text-[#d94c09]'
+                  : 'bg-slate-50 text-slate-500'
               )}
             >
               <span className="text-[10px]">{index + 1}</span>
@@ -707,7 +706,11 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
             titulo="EFETIVO PRESENTE"
             icone={<Users className="h-5 w-5 text-[#ff5a00]" />}
           >
-            <div className={efetivo.length === 0 ? "hidden overflow-x-auto md:block" : "overflow-x-auto"}>
+            <div
+              className={
+                efetivo.length === 0 ? 'hidden overflow-x-auto md:block' : 'overflow-x-auto'
+              }
+            >
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="border-b border-[#e5e7eb]">
@@ -857,7 +860,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                   <ShieldCheck className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-[12px] font-bold text-slate-800">Evidência autenticada no dispositivo</p>
+                  <p className="text-[12px] font-bold text-slate-800">
+                    Evidência autenticada no dispositivo
+                  </p>
                   <p className="mt-0.5 max-w-xl text-[11px] leading-relaxed text-slate-500">
                     Cada imagem recebe data, hora, obra, responsável e coordenadas antes do envio.
                   </p>
@@ -1249,7 +1254,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                 onClick={() => setConfirmado(!confirmado)}
                 className={cn(
                   'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition',
-                  confirmado ? 'border-[#ff5a00] bg-[#ff5a00]' : 'border-[#d1d5db] bg-white hover:border-slate-400'
+                  confirmado
+                    ? 'border-[#ff5a00] bg-[#ff5a00]'
+                    : 'border-[#d1d5db] bg-white hover:border-slate-400'
                 )}
               >
                 {confirmado && <Check className="h-3 w-3 text-white" />}
@@ -1258,7 +1265,8 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
                 onClick={() => setConfirmado(!confirmado)}
                 className="text-[12px] leading-snug text-[#64707c] select-none cursor-pointer"
               >
-                Confirmo que as informações meteorológicas, efetivo, atividades e ocorrências registradas neste RDO são verídicas.
+                Confirmo que as informações meteorológicas, efetivo, atividades e ocorrências
+                registradas neste RDO são verídicas.
               </label>
             </div>
           </Card>
@@ -1289,7 +1297,9 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
           Cancelar
         </Button>
         <div className="flex flex-1 items-center justify-end gap-2 lg:gap-3">
-          <span className="hidden text-[12px] text-[#9aa3ad] lg:inline">Salve como rascunho para continuar depois</span>
+          <span className="hidden text-[12px] text-[#9aa3ad] lg:inline">
+            Salve como rascunho para continuar depois
+          </span>
           <Button
             variant="outline"
             onClick={() => handleSalvar('RASCUNHO')}

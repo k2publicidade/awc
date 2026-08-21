@@ -51,10 +51,17 @@ async function ensureBucket() {
       cache: 'no-store',
     });
     if (check.ok) return;
-    // A API do Storage pode responder 400 ou 404 para um bucket inexistente,
-    // dependendo da versão do serviço.
-    if (check.status !== 400 && check.status !== 404) {
-      throw new Error(`Não foi possível consultar o armazenamento (${check.status})`);
+
+    const checkDetail = await readStorageError(check);
+    if (isRejectedStorageCredential(check.status, checkDetail)) {
+      throw new Error(
+        'A credencial do Supabase Storage foi rejeitada. Atualize SUPABASE_SERVICE_ROLE_KEY no ambiente de produção.'
+      );
+    }
+    if (!isMissingBucket(check.status, checkDetail)) {
+      throw new Error(
+        `Não foi possível consultar o armazenamento (${check.status})${checkDetail ? `: ${checkDetail}` : ''}`
+      );
     }
     const create = await fetch(`${baseUrl}/storage/v1/bucket`, {
       method: 'POST',
@@ -74,6 +81,33 @@ async function ensureBucket() {
     throw error;
   });
   return bucketReady;
+}
+
+async function readStorageError(response: Response) {
+  const raw = await response.text().catch(() => '');
+  if (!raw) return '';
+  try {
+    const body = JSON.parse(raw) as { message?: unknown; error?: unknown; code?: unknown };
+    return [body.error, body.message, body.code]
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      .join(': ');
+  } catch {
+    return raw.slice(0, 500);
+  }
+}
+
+function isRejectedStorageCredential(status: number, detail: string) {
+  return (
+    status === 401 ||
+    status === 403 ||
+    /unauthorized|accessdenied|signature verification failed|invalid jwt/i.test(detail)
+  );
+}
+
+function isMissingBucket(status: number, detail: string) {
+  return (
+    status === 404 || (status === 400 && /bucket[^:]*not found|not found[^:]*bucket/i.test(detail))
+  );
 }
 
 export function sanitizeFileName(fileName: string) {
@@ -104,7 +138,9 @@ export async function storeUpload(path: string, file: File) {
   );
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
-    throw new Error(`Falha ao armazenar arquivo (${response.status})${detail ? `: ${detail}` : ''}`);
+    throw new Error(
+      `Falha ao armazenar arquivo (${response.status})${detail ? `: ${detail}` : ''}`
+    );
   }
 }
 
