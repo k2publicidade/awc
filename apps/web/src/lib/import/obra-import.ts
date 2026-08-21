@@ -10,14 +10,14 @@ import type {
   ImportedObra,
   ObraImportPreview,
 } from '@/types/obra-import';
-import { parseMppBuffer, parseMppXml } from './mpp-parser';
+import { mapStructuredMppProject, parseMppXml } from './mpp-parser';
 
 type CellValue = unknown;
 type FieldName = keyof ImportedObra;
 type EtapaFieldName = keyof ImportedEtapa;
 
-const MAX_ROWS = 1_000;
-const MAX_ETAPAS = 300;
+const MAX_ROWS = 5_000;
+const MAX_ETAPAS = 5_000;
 
 const OBRA_ALIASES: Record<FieldName, string[]> = {
   nome: ['nome', 'nome da obra', 'obra', 'empreendimento', 'projeto', 'nome do projeto', 'titulo'],
@@ -233,7 +233,7 @@ function parseObraRows(rows: CellValue[][]) {
 }
 
 function parseEtapaRows(rows: CellValue[][]) {
-  const limitedRows = rows.slice(0, MAX_ROWS);
+  const limitedRows = rows;
   let header: { index: number; fields: (EtapaFieldName | undefined)[]; score: number } | undefined;
   limitedRows.slice(0, 35).forEach((row, index) => {
     const fields = row.map((cell) => ETAPA_LOOKUP.get(normalizeImportKey(cell)));
@@ -261,7 +261,6 @@ function parseEtapaRows(rows: CellValue[][]) {
       valorFinanceiro: Math.max(0, parseBrazilianNumber(raw.valorFinanceiro)),
       ordem: Math.max(0, Math.round(parseBrazilianNumber(raw.ordem) || etapas.length + 1)),
     });
-    if (etapas.length >= MAX_ETAPAS) break;
   }
   return etapas;
 }
@@ -278,6 +277,11 @@ function finalizePreview(input: {
   detected: Set<FieldName>;
   extraWarnings?: string[];
 }): ObraImportPreview {
+  if ((input.etapas?.length || 0) > MAX_ETAPAS) {
+    throw new Error(
+      `O projeto contém ${input.etapas!.length} etapas, acima do limite seguro de ${MAX_ETAPAS}. Nenhuma etapa foi descartada nem importada parcialmente.`
+    );
+  }
   const warnings = [...(input.extraWarnings || [])];
   if (!input.obra.nome) warnings.push('Nome da obra não identificado; informe-o antes de continuar.');
   if (!input.obra.codigo) {
@@ -296,7 +300,7 @@ function finalizePreview(input: {
       size: input.size,
     },
     obra: input.obra,
-    etapas: (input.etapas || []).slice(0, MAX_ETAPAS),
+    etapas: input.etapas || [],
     detectedFields,
     warnings: [...new Set(warnings)],
     confidence,
@@ -334,6 +338,14 @@ export function parseDelimitedText(text: string) {
   return rows.slice(0, MAX_ROWS);
 }
 
+function decodeTextBuffer(buffer: Buffer) {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+  } catch {
+    return new TextDecoder('windows-1252').decode(buffer);
+  }
+}
+
 export function parseWordText(text: string) {
   const rows: CellValue[][] = [];
   const etapas: ImportedEtapa[] = [];
@@ -341,8 +353,7 @@ export function parseWordText(text: string) {
     .replace(/\r/g, '')
     .split('\n')
     .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, MAX_ROWS);
+    .filter(Boolean);
 
   for (const line of lines) {
     const label = line.match(/^([^:]{2,60}):\s*(.+)$/);
@@ -496,7 +507,7 @@ async function parseMppOrXml(input: { name: string; size: number; buffer: Buffer
       const etapas: ImportedEtapa[] = [];
       let calculatedCostTotal = 0;
 
-      rawTasks.slice(0, MAX_ETAPAS).forEach((t, idx) => {
+      rawTasks.forEach((t, idx) => {
         const taskCost = typeof t.custo === 'number' ? Math.max(0, t.custo) : 0;
         calculatedCostTotal += taskCost;
 
@@ -554,21 +565,32 @@ async function parseMppOrXml(input: { name: string; size: number; buffer: Buffer
     try { if (fs.existsSync(tmpOutput)) fs.unlinkSync(tmpOutput); } catch {}
   }
 
-  // Parser nativo TypeScript puro de alto desempenho para PRODUÇÃO
-  const nativeResult = parseMppBuffer(input.buffer, input.name);
-  const detected = new Set<FieldName>();
-  if (nativeResult.obra.nome) detected.add('nome');
-  if (nativeResult.obra.codigo) detected.add('codigo');
-  if (nativeResult.obra.tipo !== 'OUTRO') detected.add('tipo');
+  try {
+    const { parseMPP } = await import('@tensor-estate/tsmpp');
+    const bytes = input.buffer.buffer.slice(
+      input.buffer.byteOffset,
+      input.buffer.byteOffset + input.buffer.byteLength
+    ) as ArrayBuffer;
+    const structuredResult = mapStructuredMppProject(await parseMPP(bytes), input.name);
+    const detected = new Set<FieldName>(['nome', 'codigo', 'descricao']);
+    if (structuredResult.obra.tipo !== 'OUTRO') detected.add('tipo');
+    if (structuredResult.obra.dataInicio) detected.add('dataInicio');
+    if (structuredResult.obra.dataPrevisaoFim) detected.add('dataPrevisaoFim');
 
-  return finalizePreview({
-    name: input.name,
-    size: input.size,
-    obra: nativeResult.obra,
-    detected,
-    etapas: nativeResult.etapas,
-    extraWarnings: nativeResult.warnings,
-  });
+    return finalizePreview({
+      name: input.name,
+      size: input.size,
+      obra: structuredResult.obra,
+      detected,
+      etapas: structuredResult.etapas,
+      extraWarnings: structuredResult.warnings,
+    });
+  } catch (structuredError) {
+    console.error('[import] Falha no parser estrutural Microsoft Project:', structuredError);
+    throw new Error(
+      'Não foi possível comprovar a leitura completa deste arquivo .mpp. Nenhum dado foi importado. Salve o projeto como XML no Microsoft Project e tente novamente.'
+    );
+  }
 }
 
 /**
@@ -735,7 +757,6 @@ async function parsePdf(input: { name: string; size: number; buffer: Buffer }): 
             });
           }
         }
-        if (etapas.length >= MAX_ETAPAS) break;
       }
 
       warnings.push(`Texto extraído de ${pages.length} páginas do documento PDF.`);
@@ -801,8 +822,7 @@ export async function parseObraFile(input: {
 
   // Arquivos CSV (.csv)
   if (extension === '.csv') {
-    let text = input.buffer.toString('utf8');
-    if (text.includes('')) text = new TextDecoder('windows-1252').decode(input.buffer);
+    const text = decodeTextBuffer(input.buffer);
     const parsed = parseObraRows(parseDelimitedText(text));
     return finalizePreview({
       name: input.name,

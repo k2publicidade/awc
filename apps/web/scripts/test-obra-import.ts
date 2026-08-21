@@ -7,6 +7,8 @@ import {
   parseObraFile,
   parseWordText,
 } from '../src/lib/import/obra-import';
+import { mapStructuredMppProject, parseMppXml } from '../src/lib/import/mpp-parser';
+import { assertImportedStageCount } from '../src/lib/import/import-integrity';
 
 async function main() {
   assert.equal(parseBrazilianNumber('R$ 2.450.100,75'), 2450100.75);
@@ -88,7 +90,48 @@ async function main() {
   assert.equal(word.etapas.length, 1);
   assert.equal(word.etapas[0].valorFinanceiro, 1200000);
 
-  console.log('Importador de obras: CSV, XLSX, Word, datas e valores aprovados.');
+  const xmlTasks = Array.from({ length: 350 }, (_, index) => `
+    <Task>
+      <UID>${index + 1}</UID>
+      <ID>${index + 1}</ID>
+      <Name>Atividade ${index + 1}</Name>
+      <WBS>${index + 1}</WBS>
+      <Summary>0</Summary>
+      <Start>2026-01-01T08:00:00</Start>
+      <Finish>2026-01-02T17:00:00</Finish>
+    </Task>
+  `).join('');
+  const mppXml = parseMppXml(
+    `<Project><Title>Projeto Completo</Title><Tasks>${xmlTasks}</Tasks></Project>`,
+    'projeto-completo.xml'
+  );
+  assert.equal(mppXml.etapas.length, 350, 'não deve truncar silenciosamente tarefas do projeto');
+
+  const structured = mapStructuredMppProject(
+    {
+      name: 'Projeto Estruturado',
+      startDate: '2026-02-01T08:00',
+      finishDate: '2026-06-30T17:00',
+      tasks: [
+        { id: 1, name: 'EXECUÇÃO', level: 1, startDate: '2026-02-01T08:00', finishDate: '2026-06-30T17:00', durationDays: 100, isSummary: true, isMilestone: false, parentId: null, predecessors: [] },
+        { id: 2, name: 'Fundação', level: 2, startDate: '2026-02-01T08:00', finishDate: '2026-02-10T17:00', durationDays: 8, isSummary: false, isMilestone: false, parentId: 1, predecessors: [] },
+        { id: 3, name: 'Estrutura', level: 2, startDate: '2026-02-11T08:00', finishDate: '2026-03-10T17:00', durationDays: 20, isSummary: false, isMilestone: false, parentId: 1, predecessors: [{ taskId: 2, type: 'FS' }] },
+      ],
+    },
+    'projeto.mpp'
+  );
+  assert.equal(structured.etapas.length, 2);
+  assert.equal(structured.etapas[0].dataInicio, '2026-02-01');
+  assert.match(structured.etapas[0].descricao, /Fase: EXECUÇÃO/);
+  assert.match(structured.etapas[1].descricao, /Predecessoras: 2 \(FS\)/);
+
+  assert.doesNotThrow(() => assertImportedStageCount(77, 77));
+  assert.throws(
+    () => assertImportedStageCount(77, 8),
+    /Integridade da importação violada: esperadas 77 etapas, mas 8 foram gravadas/
+  );
+
+  console.log('Importador de obras: formatos, volume e integridade aprovados.');
 }
 
 main().catch((error) => {

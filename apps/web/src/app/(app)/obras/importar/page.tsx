@@ -30,6 +30,7 @@ import type {
   ObraImportPreview,
   ObraImportResult,
 } from '@/types/obra-import';
+import { useObra } from '@/hooks/use-obra';
 
 const obraTypes = [
   ['GALPAO', 'Galpão / Industrial'],
@@ -44,6 +45,7 @@ const inputClass =
   'mt-2 h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#ff5a00] focus:ring-4 focus:ring-orange-100/70';
 
 export default function ImportarObraPage() {
+  const { refreshObras, setActiveObraId } = useObra();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ObraImportPreview | null>(null);
@@ -95,6 +97,8 @@ export default function ImportarObraPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Não foi possível importar a obra');
+      await refreshObras();
+      setActiveObraId(data.id);
       setResult(data);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível importar a obra');

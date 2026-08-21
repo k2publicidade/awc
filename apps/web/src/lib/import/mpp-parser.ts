@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type { ProjectData, ProjectTask } from '@tensor-estate/tsmpp';
 import type { ImportedEtapa, ImportedObra } from '@/types/obra-import';
 
 export interface ParsedMppResult {
@@ -6,6 +7,86 @@ export interface ParsedMppResult {
   etapas: ImportedEtapa[];
   detectedFields: string[];
   warnings: string[];
+}
+
+function projectDate(value?: string | null) {
+  return value ? value.slice(0, 10) : '';
+}
+
+export function mapStructuredMppProject(project: ProjectData, fileName: string): ParsedMppResult {
+  const taskById = new Map(project.tasks.map((task) => [task.id, task]));
+
+  function parentPath(task: ProjectTask) {
+    const names: string[] = [];
+    let parentId = task.parentId;
+    const visited = new Set<number>();
+    while (parentId && !visited.has(parentId)) {
+      visited.add(parentId);
+      const parent = taskById.get(parentId);
+      if (!parent) break;
+      names.unshift(parent.name);
+      parentId = parent.parentId;
+    }
+    return names.join(' › ');
+  }
+
+  const operationalTasks = project.tasks.filter((task) => !task.isSummary && task.name.trim());
+  const etapas = operationalTasks.map<ImportedEtapa>((task, index) => {
+    const details: string[] = [];
+    const hierarchy = parentPath(task);
+    if (hierarchy) details.push(`Fase: ${hierarchy}`);
+    if (Number.isFinite(task.durationDays)) details.push(`Duração: ${task.durationDays} dia(s)`);
+    if (task.isMilestone) details.push('Marco do projeto');
+    if (task.baselineStartDate || task.baselineFinishDate) {
+      details.push(
+        `Baseline: ${projectDate(task.baselineStartDate) || '—'} a ${projectDate(task.baselineFinishDate) || '—'}`
+      );
+    }
+    if (task.predecessors.length) {
+      details.push(
+        `Predecessoras: ${task.predecessors.map((item) => `${item.taskId} (${item.type})`).join(', ')}`
+      );
+    }
+
+    const customValues = Object.entries(task.tableValues || {})
+      .filter(([, value]) => value !== null && value !== '')
+      .map(([key, value]) => `${key}: ${String(value)}`);
+    if (customValues.length) details.push(`Campos do projeto: ${customValues.join('; ')}`);
+
+    return {
+      nome: task.name.trim(),
+      descricao: details.join(' | '),
+      dataInicio: projectDate(task.startDate),
+      dataFim: projectDate(task.finishDate),
+      percentualPrevisto: 0,
+      percentualRealizado: 0,
+      valorFinanceiro: 0,
+      ordem: index + 1,
+    };
+  });
+
+  const projectName = project.name?.trim() || path.parse(fileName).name.replace(/[-_]/g, ' ').trim();
+  const obra: ImportedObra = {
+    nome: projectName,
+    codigo: generateCode(projectName),
+    tipo: normalizeTipoString(projectName),
+    endereco: '',
+    cidade: '',
+    estado: '',
+    valorContratado: 0,
+    dataInicio: projectDate(project.startDate),
+    dataPrevisaoFim: projectDate(project.finishDate),
+    descricao: `Cronograma estruturado importado do Microsoft Project (${fileName}).`,
+  };
+
+  return {
+    obra,
+    etapas,
+    detectedFields: ['Nome da obra', 'Código', 'Descrição', 'Data de início', 'Previsão de término'],
+    warnings: [
+      `Microsoft Project processado estruturalmente: ${project.tasks.length} tarefas no arquivo, ${etapas.length} tarefas operacionais importadas com hierarquia, datas, duração e dependências.`,
+    ],
+  };
 }
 
 /**
@@ -215,7 +296,7 @@ export function parseMppBuffer(buffer: Buffer, fileName: string): ParsedMppResul
 
   return {
     obra,
-    etapas: etapas.slice(0, 300),
+    etapas,
     detectedFields,
     warnings: [`Importação Microsoft Project concluída: ${etapas.length} etapas operacionais identificadas.`],
   };
@@ -288,7 +369,7 @@ export function parseMppXml(xmlString: string, fileName: string): ParsedMppResul
 
   return {
     obra,
-    etapas: etapas.slice(0, 300),
+    etapas,
     detectedFields,
     warnings: [`XML Microsoft Project processado: ${etapas.length} etapas operacionais identificadas.`],
   };

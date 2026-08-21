@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { requireSession } from '@/lib/session-context';
 import { canAccessResource } from '@/lib/authorization';
 import { planLimit } from '@/lib/saas';
+import { assertImportedStageCount } from '@/lib/import/import-integrity';
 
 const optionalText = z.string().trim().max(2_000).default('');
 const optionalDate = z
@@ -40,7 +41,7 @@ const importSchema = z.object({
         ordem: z.coerce.number().int().min(0).max(10_000),
       })
     )
-    .max(300)
+    .max(5_000)
     .default([]),
 });
 
@@ -99,8 +100,16 @@ export async function POST(request: NextRequest) {
             })),
           },
         },
-        select: { id: true, nome: true, codigo: true },
+        select: {
+          id: true,
+          nome: true,
+          codigo: true,
+          _count: { select: { etapas: true } },
+        },
       });
+
+      const etapasCriadas = obra._count.etapas;
+      assertImportedStageCount(input.etapas.length, etapasCriadas);
 
       await tx.auditLog.create({
         data: {
@@ -111,12 +120,13 @@ export async function POST(request: NextRequest) {
           targetId: obra.id,
           metadata: {
             fileName: input.fileName,
-            etapasCriadas: input.etapas.length,
+            etapasEsperadas: input.etapas.length,
+            etapasCriadas,
             formato: input.fileName.split('.').pop()?.toLowerCase() || 'desconhecido',
           },
         },
       });
-      return { ...obra, etapasCriadas: input.etapas.length };
+      return { id: obra.id, nome: obra.nome, codigo: obra.codigo, etapasCriadas };
     });
 
     return NextResponse.json(result, { status: 201 });
