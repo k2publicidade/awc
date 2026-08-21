@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useObra, type ObraItem } from '@/hooks/use-obra';
+import { useObra } from '@/hooks/use-obra';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +21,6 @@ import {
   MapPin,
   Plus,
   Search,
-  Sparkles,
 } from 'lucide-react';
 
 const statusDotColors: Record<string, string> = {

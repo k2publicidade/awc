@@ -5,6 +5,7 @@ node_modules
 
 # testing
 coverage
+.expo/
 
 # next.js
 .next/

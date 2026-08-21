@@ -24,7 +24,11 @@
     "turbo": "^2.3.0",
     "prettier": "^3.2.5",
     "prisma": "^6.0.0",
-    "@prisma/client": "^6.0.0"
+    "@prisma/client": "^6.0.0",
+    "dotenv": "^16.6.1",
+    "react": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-safe-area-context": "5.7.0"
   },
   "packageManager": "npm@10.9.2",
   "engines": {
@@ -36,5 +40,11 @@
     "prisma@6.19.3": true,
     "esbuild@0.28.2": true,
     "unrs-resolver@1.12.2": true
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.0",
+    "react": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-safe-area-context": "5.7.0"
   }
 }

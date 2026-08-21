@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { genId } from "../lib/id";
 
 /** Move uma captura temporária para armazenamento durável antes de entrar na fila offline. */

@@ -5,7 +5,7 @@ import { useObra } from '@/hooks/use-obra';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
-import { Check, Sparkles, Star } from 'lucide-react';
+import { Sparkles, Star } from 'lucide-react';
 
 export function ActiveObraToggleButton({
   obraId,

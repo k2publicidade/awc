@@ -23,7 +23,6 @@ import {
   FileCheck2,
   HardHat,
   Layers,
-  MapPin,
   Menu,
   PackageCheck,
   ShieldAlert,

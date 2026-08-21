@@ -95,13 +95,16 @@ export default function RelatoriosPage() {
 
   useEffect(() => {
     if (globalObras && globalObras.length > 0) {
-      setObras(globalObras);
-      if (activeObraId && globalObras.some((o) => o.id === activeObraId)) {
-        setObraId(activeObraId);
-      } else {
-        setObraId(globalObras[0].id);
-      }
-      setLoading(false);
+      const timer = window.setTimeout(() => {
+        setObras(globalObras);
+        if (activeObraId && globalObras.some((o) => o.id === activeObraId)) {
+          setObraId(activeObraId);
+        } else {
+          setObraId(globalObras[0].id);
+        }
+        setLoading(false);
+      }, 0);
+      return () => window.clearTimeout(timer);
     } else {
       fetch('/api/crud/obras')
         .then((r) => r.json())

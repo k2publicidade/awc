@@ -50,7 +50,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <StatusBar style="light" backgroundColor={COLORS.dark} />
+        <StatusBar style="light" />
         <AppNavigator />
       </SafeAreaView>
     </SafeAreaProvider>

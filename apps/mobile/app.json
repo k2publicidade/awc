@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#1E2832",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rigor.gestao",
@@ -16,19 +18,40 @@
     },
     "android": {
       "package": "com.rigor.gestao",
-      "permissions": ["CAMERA", "READ_MEDIA_IMAGES", "ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "RECORD_AUDIO"]
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "RECORD_AUDIO"
+      ]
     },
     "plugins": [
-      ["expo-image-picker", { "cameraPermission": "O RIGOR usa a câmera para registrar fotos da obra." }],
-      ["expo-location", { "locationWhenInUsePermission": "O RIGOR usa sua localização para identificar as fotos registradas em campo." }],
-      ["expo-speech-recognition", {
-        "microphonePermission": "O RIGOR usa o microfone para transcrever ocorrências do RDO.",
-        "speechRecognitionPermission": "O RIGOR usa o reconhecimento de fala para transcrever ocorrências do RDO."
-      }],
-      "expo-secure-store"
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "O RIGOR usa a câmera para registrar fotos da obra."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O RIGOR usa sua localização para identificar as fotos registradas em campo."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "O RIGOR usa o microfone para transcrever ocorrências do RDO.",
+          "speechRecognitionPermission": "O RIGOR usa o reconhecimento de fala para transcrever ocorrências do RDO."
+        }
+      ],
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-status-bar"
     ],
     "extra": {
-      "apiUrl": "https://awc-web-ruby.vercel.app/api"
+      "apiUrl": "https://rigorobras.vercel.app/api"
     }
   }
 }

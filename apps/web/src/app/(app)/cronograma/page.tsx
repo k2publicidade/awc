@@ -46,12 +46,15 @@ export default function CronogramaPage() {
 
   useEffect(() => {
     if (globalObras && globalObras.length > 0) {
-      setObras(globalObras);
-      if (activeObraId && globalObras.some((o) => o.id === activeObraId)) {
-        setObraId(activeObraId);
-      } else {
-        setObraId(globalObras[0].id);
-      }
+      const timer = window.setTimeout(() => {
+        setObras(globalObras);
+        if (activeObraId && globalObras.some((o) => o.id === activeObraId)) {
+          setObraId(activeObraId);
+        } else {
+          setObraId(globalObras[0].id);
+        }
+      }, 0);
+      return () => window.clearTimeout(timer);
     } else {
       fetch('/api/crud/obras')
         .then((r) => r.json())

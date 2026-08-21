@@ -4,7 +4,6 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';

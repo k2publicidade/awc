@@ -9,8 +9,6 @@ export async function GET(req: NextRequest) {
   if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   if (!canAccessResource(context.role, 'obras'))
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
-  const { tenantId } = context;
-
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status');
   const tipo = searchParams.get('tipo');

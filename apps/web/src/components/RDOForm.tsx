@@ -33,7 +33,6 @@ import {
   PenTool,
   Trash2,
   Plus,
-  ChevronDown,
   Check,
   Loader2,
   ArrowLeft,
@@ -126,7 +125,7 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
   // Assinatura
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
-  const [assinado, setAssinado] = useState(false);
+  const [, setAssinado] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const [crea, setCrea] = useState('');
   const [nomeAssinatura, setNomeAssinatura] = useState('');
@@ -167,9 +166,12 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
     if (!isEditing && !engenheiroId && currentUser?.id && engenheiros.length > 0) {
       const match = engenheiros.find((e) => e.id === currentUser.id);
       if (match) {
-        setEngenheiroId(match.id);
-        setEngenheiro(match.name);
-        setNomeAssinatura((prev) => prev || match.name);
+        const timer = window.setTimeout(() => {
+          setEngenheiroId(match.id);
+          setEngenheiro(match.name);
+          setNomeAssinatura((prev) => prev || match.name);
+        }, 0);
+        return () => window.clearTimeout(timer);
       }
     }
   }, [isEditing, engenheiroId, currentUser, engenheiros]);
@@ -182,8 +184,11 @@ export function RDOForm({ rdoId }: { rdoId?: string }) {
       activeObraId !== 'all' &&
       (!obraId || obraId !== activeObraId)
     ) {
-      setObraId(activeObraId);
-      if (activeObra?.nome) setObraNome(activeObra.nome);
+      const timer = window.setTimeout(() => {
+        setObraId(activeObraId);
+        if (activeObra?.nome) setObraNome(activeObra.nome);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [isEditing, activeObraId, activeObra, obraId]);
 

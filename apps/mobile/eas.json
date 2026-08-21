@@ -8,19 +8,19 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://awc-web-ruby.vercel.app/api"
+        "EXPO_PUBLIC_API_URL": "https://rigorobras.vercel.app/api"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://awc-web-ruby.vercel.app/api"
+        "EXPO_PUBLIC_API_URL": "https://rigorobras.vercel.app/api"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://awc-web-ruby.vercel.app/api"
+        "EXPO_PUBLIC_API_URL": "https://rigorobras.vercel.app/api"
       }
     }
   },

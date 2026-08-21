@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useObra } from '@/hooks/use-obra';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Building2, Globe, HardHat, Settings, SlidersHorizontal } from 'lucide-react';
+import { Building2, Globe, Settings } from 'lucide-react';
 import { RigorLogo } from '@/components/ui/rigor-logo';
 
 const roleLabel: Record<string, string> = {

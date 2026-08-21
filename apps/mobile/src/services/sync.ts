@@ -1,5 +1,5 @@
 import * as Network from "expo-network";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import {
   getRDOsOffline, markRDOSynced, getRemoteRDOId,
   getFotosOffline, markFotoUploaded,

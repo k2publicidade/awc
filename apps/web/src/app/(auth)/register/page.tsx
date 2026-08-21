@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, Suspense, useEffect, useState } from 'react';
+import { FormEvent, Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Check, Loader2, ShieldCheck, ArrowRight } from 'lucide-react';
@@ -18,12 +18,6 @@ function RegisterForm() {
   const [plan, setPlan] = useState<SaasPlan>(initialPlan);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (initialPlanParam && initialPlanParam in SAAS_PLANS) {
-      setPlan(initialPlanParam);
-    }
-  }, [initialPlanParam]);
 
   if (!publicSignupEnabled) {
     return (
