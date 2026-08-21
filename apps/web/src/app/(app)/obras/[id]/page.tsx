@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { cn } from '@/lib/utils';
 import { requireSession } from '@/lib/session-context';
-import { canAccessResource } from '@/lib/authorization';
+import { canAccessResource, userObraWhere } from '@/lib/authorization';
 import { ActiveObraToggleButton } from '@/components/obras/active-obra-toggle-button';
 import {
   Activity,
@@ -75,16 +75,7 @@ export default async function ObraDetailPage({ params }: { params: Promise<{ id:
   const context = await requireSession();
   if (!context || !canAccessResource(context.role, 'obras')) notFound();
   const { tenantId, userId, role } = context;
-  const userObraScope =
-    role === 'MASTER_ADMIN'
-      ? { tenantId }
-      : {
-          tenantId,
-          OR: [
-            { engenheiroId: userId },
-            { clienteId: userId },
-          ],
-        };
+  const userObraScope = userObraWhere(role, tenantId, userId);
 
   const obra = await prisma.obra.findFirst({
     where: { id, ...userObraScope },

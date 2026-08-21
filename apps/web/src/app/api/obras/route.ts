@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireSession } from '@/lib/session-context';
-import { assertTenantRelations, canAccessResource } from '@/lib/authorization';
+import { assertTenantRelations, canAccessResource, userObraWhere } from '@/lib/authorization';
 
 /** GET /api/obras — List obras with filters */
 export async function GET(req: NextRequest) {
@@ -16,16 +16,7 @@ export async function GET(req: NextRequest) {
   const tipo = searchParams.get('tipo');
   const search = searchParams.get('search');
 
-  const userObraScope =
-    context.role === 'MASTER_ADMIN'
-      ? { tenantId }
-      : {
-          tenantId,
-          OR: [
-            { engenheiroId: context.userId },
-            { clienteId: context.userId },
-          ],
-        };
+  const userObraScope = userObraWhere(context.role, context.tenantId, context.userId);
 
   const where: DynamicValue = { ...userObraScope };
   if (status) where.status = status;

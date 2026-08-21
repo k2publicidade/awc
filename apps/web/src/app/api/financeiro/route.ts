@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireSession } from '@/lib/session-context';
-import { assertTenantRelations, canAccessResource } from '@/lib/authorization';
+import { assertTenantRelations, canAccessResource, userObraWhere } from '@/lib/authorization';
 
 export async function GET(req: NextRequest) {
   const context = await requireSession();
@@ -11,16 +11,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const obraId = searchParams.get('obraId');
-  const userObraScope =
-    context.role === 'MASTER_ADMIN'
-      ? { tenantId: context.tenantId }
-      : {
-          tenantId: context.tenantId,
-          OR: [
-            { engenheiroId: context.userId },
-            { clienteId: context.userId },
-          ],
-        };
+  const userObraScope = userObraWhere(context.role, context.tenantId, context.userId);
 
   const where: DynamicValue = { obra: userObraScope };
   if (obraId) where.obraId = obraId;

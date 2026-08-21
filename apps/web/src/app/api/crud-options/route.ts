@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireSession } from '@/lib/session-context';
+import { userObraWhere } from '@/lib/authorization';
 
 export async function GET() {
   try {
@@ -9,16 +10,7 @@ export async function GET() {
     ]);
     if (!context) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     const { tenantId, userId, role } = context;
-    const userObraScope =
-      role === 'MASTER_ADMIN'
-        ? { tenantId }
-        : {
-            tenantId,
-            OR: [
-              { engenheiroId: userId },
-              { clienteId: userId },
-            ],
-          };
+    const userObraScope = userObraWhere(role, tenantId, userId);
 
     const [
       obras,

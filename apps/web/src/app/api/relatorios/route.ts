@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireSession } from '@/lib/session-context';
-import { canAccessResource, tenantOwnsObra } from '@/lib/authorization';
+import { canAccessResource, tenantOwnsObra, userObraWhere } from '@/lib/authorization';
 import { generateRelatorioExecutivo } from '@/lib/reports/executivo';
 import { generateBoletimMedicao } from '@/lib/reports/boletim-medicao';
 import { generateRDOCompilado } from '@/lib/reports/rdo-compilado';
@@ -44,16 +44,7 @@ export async function GET(req: NextRequest) {
   if (!resource || !canAccessResource(context.role, resource))
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
-  const userObraScope =
-    context.role === 'MASTER_ADMIN'
-      ? { tenantId: context.tenantId }
-      : {
-          tenantId: context.tenantId,
-          OR: [
-            { engenheiroId: context.userId },
-            { clienteId: context.userId },
-          ],
-        };
+  const userObraScope = userObraWhere(context.role, context.tenantId, context.userId);
 
   if (type === 'medicao') {
     const medicaoId = searchParams.get('medicaoId') || '';

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireSession } from '@/lib/session-context';
-import { assertTenantRelations, canAccessResource } from '@/lib/authorization';
+import { assertTenantRelations, canAccessResource, tenantOwnsObra, userObraWhere } from '@/lib/authorization';
 
 /** GET /api/rdo — List RDOs with filters */
 export async function GET(req: NextRequest) {
@@ -15,16 +15,7 @@ export async function GET(req: NextRequest) {
   const dataInicio = searchParams.get('dataInicio');
   const dataFim = searchParams.get('dataFim');
 
-  const userObraScope =
-    context.role === 'MASTER_ADMIN'
-      ? { tenantId: context.tenantId }
-      : {
-          tenantId: context.tenantId,
-          OR: [
-            { engenheiroId: context.userId },
-            { clienteId: context.userId },
-          ],
-        };
+  const userObraScope = userObraWhere(context.role, context.tenantId, context.userId);
 
   const where: DynamicValue = { obra: userObraScope };
   if (obraId) where.obraId = obraId;
@@ -59,98 +50,113 @@ export async function POST(req: NextRequest) {
   if (!canAccessResource(context.role, 'rdos', true))
     return NextResponse.json({ error: 'Sem permissão' }, { status: 403 });
 
-  const body = await req.json();
-  const userId = context.userId;
-  const { tenantOwnsObra } = await import('@/lib/authorization');
-  if (!(await tenantOwnsObra(body.obraId, context.tenantId, context.userId, context.role))) {
-    return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
-  }
-  await assertTenantRelations(
-    { obraId: body.obraId, responsavelId: body.responsavelId || userId },
-    context.tenantId
-  );
-  for (const atividade of body.atividades || []) {
-    await assertTenantRelations({ etapaId: atividade.etapaId }, context.tenantId);
-  }
-
-  const ultimo = await prisma.rDO.findFirst({
-    where: { obraId: body.obraId },
-    orderBy: { numero: 'desc' },
-    select: { numero: true },
-  });
-
-  const rdo = await prisma.rDO.create({
-    data: {
-      data: new Date(body.data),
-      numero:
-        body.numero != null && body.numero !== '' ? Number(body.numero) : (ultimo?.numero ?? 0) + 1,
-      obraId: body.obraId,
-      responsavelId: body.responsavelId || userId,
-      status: body.status === 'APROVADO' ? 'APROVADO' : 'RASCUNHO',
-      climaManha: body.climaManha || null,
-      climaTarde: body.climaTarde || null,
-      temperaturaManha: body.temperaturaManha != null ? Number(body.temperaturaManha) : null,
-      temperaturaTarde: body.temperaturaTarde != null ? Number(body.temperaturaTarde) : null,
-      observacoes: body.observacoes || null,
-      assinaturaNome: body.assinaturaNome || null,
-      assinaturaCrea: body.assinaturaCrea || null,
-      assinaturaBase64: body.assinaturaImagem || body.assinaturaBase64 || null,
-      climas: {
-        create: (body.climas || []).map((c: DynamicValue) => ({
-          periodo: c.periodo,
-          condicao: c.condicao,
-          temperatura: c.temperatura != null ? Number(c.temperatura) : null,
-          observacao: c.observacao || null,
-        })),
-      },
-      efetivos: {
-        create: (body.efetivos || []).map((e: DynamicValue) => ({
-          funcao: e.funcao,
-          quantidadePresente: Number(e.quantidadePresente) || 0,
-          quantidadeAusente: Number(e.quantidadeAusente) || 0,
-          quantidadeFaltaJustificada: Number(e.quantidadeFaltaJustificada) || 0,
-        })),
-      },
-      atividades: {
-        create: (body.atividades || []).map((a: DynamicValue) => ({
-          descricao: a.descricao || a.etapa || '',
-          etapaId: a.etapaId || null,
-          percentualExecutado: Number(a.percentualExecutado) || 0,
-        })),
-      },
-      ocorrenciasRdo: {
-        create: (body.ocorrencias || []).map((o: DynamicValue) => ({
-          tipo: o.tipo,
-          descricao: o.descricao,
-        })),
-      },
-      equipamentos: {
-        create: (body.equipamentos || []).map((e: DynamicValue) => ({
-          equipamento: e.equipamento || e.nome || '',
-          horasTrabalhadas: Number(e.horasTrabalhadas ?? e.horas) || 0,
-          observacao: e.observacao || null,
-        })),
-      },
-    },
-    include: {
-      obra: true,
-      climas: true,
-      efetivos: true,
-      atividades: true,
-      ocorrenciasRdo: true,
-      equipamentos: true,
-    },
-  });
-
-  // Update etapa progress from atividades
-  for (const atividade of body.atividades || []) {
-    if (atividade.etapaId && atividade.percentualExecutado) {
-      await prisma.etapa.update({
-        where: { id: atividade.etapaId },
-        data: { percentualRealizado: { increment: atividade.percentualExecutado } },
-      });
+  try {
+    const body = await req.json();
+    const userId = context.userId;
+    if (!(await tenantOwnsObra(body.obraId, context.tenantId, context.userId, context.role))) {
+      return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 });
     }
-  }
+    await assertTenantRelations(
+      { obraId: body.obraId, responsavelId: body.responsavelId || userId },
+      context.tenantId
+    );
+    for (const atividade of body.atividades || []) {
+      await assertTenantRelations({ etapaId: atividade.etapaId }, context.tenantId);
+    }
 
-  return NextResponse.json(rdo, { status: 201 });
+    const ultimo = await prisma.rDO.findFirst({
+      where: { obraId: body.obraId },
+      orderBy: { numero: 'desc' },
+      select: { numero: true },
+    });
+
+    const rdo = await prisma.rDO.create({
+      data: {
+        data: new Date(body.data),
+        numero:
+          body.numero != null && body.numero !== '' ? Number(body.numero) : (ultimo?.numero ?? 0) + 1,
+        obraId: body.obraId,
+        responsavelId: body.responsavelId || userId,
+        status: body.status === 'APROVADO' ? 'APROVADO' : 'RASCUNHO',
+        climaManha: body.climaManha || null,
+        climaTarde: body.climaTarde || null,
+        temperaturaManha: body.temperaturaManha != null ? Number(body.temperaturaManha) : null,
+        temperaturaTarde: body.temperaturaTarde != null ? Number(body.temperaturaTarde) : null,
+        observacoes: body.observacoes || null,
+        assinaturaNome: body.assinaturaNome || null,
+        assinaturaCrea: body.assinaturaCrea || null,
+        assinaturaBase64: body.assinaturaImagem || body.assinaturaBase64 || null,
+        climas: {
+          create: (body.climas || []).map((c: DynamicValue) => ({
+            periodo: c.periodo,
+            condicao: c.condicao,
+            temperatura: c.temperatura != null ? Number(c.temperatura) : null,
+            observacao: c.observacao || null,
+          })),
+        },
+        efetivos: {
+          create: (body.efetivos || []).map((e: DynamicValue) => ({
+            funcao: e.funcao,
+            quantidadePresente: Number(e.quantidadePresente) || 0,
+            quantidadeAusente: Number(e.quantidadeAusente) || 0,
+            quantidadeFaltaJustificada: Number(e.quantidadeFaltaJustificada) || 0,
+          })),
+        },
+        atividades: {
+          create: (body.atividades || []).map((a: DynamicValue) => ({
+            descricao: a.descricao || a.etapa || '',
+            etapaId: a.etapaId || null,
+            percentualExecutado: Number(a.percentualExecutado) || 0,
+          })),
+        },
+        ocorrenciasRdo: {
+          create: (body.ocorrencias || []).map((o: DynamicValue) => ({
+            tipo: o.tipo,
+            descricao: o.descricao,
+          })),
+        },
+        equipamentos: {
+          create: (body.equipamentos || []).map((e: DynamicValue) => ({
+            equipamento: e.equipamento || e.nome || '',
+            horasTrabalhadas: Number(e.horasTrabalhadas ?? e.horas) || 0,
+            observacao: e.observacao || null,
+          })),
+        },
+      },
+      include: {
+        obra: true,
+        climas: true,
+        efetivos: true,
+        atividades: true,
+        ocorrenciasRdo: true,
+        equipamentos: true,
+      },
+    });
+
+    // Update etapa progress from atividades
+    for (const atividade of body.atividades || []) {
+      if (atividade.etapaId && atividade.percentualExecutado) {
+        await prisma.etapa.update({
+          where: { id: atividade.etapaId },
+          data: { percentualRealizado: { increment: atividade.percentualExecutado } },
+        });
+      }
+    }
+
+    return NextResponse.json(rdo, { status: 201 });
+  } catch (error: DynamicValue) {
+    return rdoError(error);
+  }
+}
+
+function rdoError(error: DynamicValue) {
+  if (error?.code === 'P2002')
+    return NextResponse.json(
+      { error: 'Já existe um RDO para esta obra nesta data. Edite o RDO existente.' },
+      { status: 409 }
+    );
+  return NextResponse.json(
+    { error: error?.message || 'Erro ao salvar RDO' },
+    { status: 500 }
+  );
 }

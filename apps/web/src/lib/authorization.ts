@@ -68,15 +68,7 @@ export function resourceTenantWhere(
     return { obra: { tenantId } };
   }
 
-  const userObraScope: DynamicValue = userId
-    ? {
-        tenantId,
-        OR: [
-          { engenheiroId: userId },
-          { clienteId: userId },
-        ],
-      }
-    : { tenantId };
+  const userObraScope = userObraWhere(role || '', tenantId, userId);
 
   if (resource === 'notificacoes') {
     return { tenantId, userId };
@@ -98,7 +90,7 @@ export function resourceTenantWhere(
     return { trabalhador: { tenantId } };
   }
 
-  if (['materiais', 'fornecedores'].includes(resource)) {
+  if (['materiais', 'fornecedores', 'equipe'].includes(resource)) {
     return { tenantId };
   }
 
@@ -107,6 +99,26 @@ export function resourceTenantWhere(
 
 export function scopedWhere(scope: DynamicValue, where: DynamicValue = {}) {
   return Object.keys(where).length ? { AND: [scope, where] } : scope;
+}
+
+/**
+ * Escopo de obras por usuário. Apenas papéis de campo (ENGENHEIRO, CLIENTE)
+ * enxergam exclusivamente as obras às quais estão vinculados. Papéis de
+ * gestão/operação (SUPER_ADMIN, ADMIN, ENCARREGADO, FINANCEIRO, ALMOXARIFE)
+ * enxergam todas as obras do tenant — sem isso, cadastrar RDO, medir serviços
+ * ou lançar financeiro fica impossível para quem não é engenheiro da obra.
+ */
+export function userObraWhere(role: string, tenantId: string, userId?: string) {
+  if (role === 'ENGENHEIRO' || role === 'CLIENTE') {
+    return {
+      tenantId,
+      OR: [
+        { engenheiroId: userId },
+        { clienteId: userId },
+      ],
+    };
+  }
+  return { tenantId };
 }
 
 const relationChecks: Record<string, { model: string; where: (id: string, tenantId: string) => DynamicValue }> = {
@@ -164,21 +176,10 @@ export async function tenantOwnsObra(
   userId?: string,
   role?: string
 ) {
-  if (role === 'MASTER_ADMIN') {
-    return prisma.obra.findFirst({ where: { id: obraId, tenantId }, select: { id: true } });
-  }
   return prisma.obra.findFirst({
     where: {
+      ...userObraWhere(role || '', tenantId, userId),
       id: obraId,
-      tenantId,
-      ...(userId
-        ? {
-            OR: [
-              { engenheiroId: userId },
-              { clienteId: userId },
-            ],
-          }
-        : {}),
     },
     select: { id: true },
   });

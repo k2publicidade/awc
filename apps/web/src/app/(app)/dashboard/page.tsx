@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { cn } from '@/lib/utils';
 import { requireSession } from '@/lib/session-context';
+import { userObraWhere } from '@/lib/authorization';
 import {
   AlertTriangle,
   Bell,
@@ -69,16 +70,7 @@ export default async function DashboardPage() {
   const context = await requireSession();
   if (!context) redirect('/login');
   const { tenantId, userId, role } = context;
-  const obraWhere =
-    role === 'MASTER_ADMIN'
-      ? { tenantId }
-      : {
-          tenantId,
-          OR: [
-            { engenheiroId: userId },
-            { clienteId: userId },
-          ],
-        };
+  const obraWhere = userObraWhere(role, tenantId, userId);
 
   const hoje = new Date();
   const inicioHoje = new Date(hoje);

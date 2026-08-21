@@ -9,6 +9,7 @@ import {
   canAccessResource,
   resourceTenantWhere,
   scopedWhere,
+  userObraWhere,
 } from '@/lib/authorization';
 
 const prismaAny = prisma as DynamicValue;
@@ -30,19 +31,13 @@ async function firstId(model: string, where?: DynamicValue) {
 async function addDefaults(
   resourceKey: string,
   data: DynamicValue,
-  opts: { tenantId: string; userId: string }
+  opts: { tenantId: string; userId: string; role?: string }
 ) {
-  const { tenantId, userId } = opts;
-  const userObraWhere = tenantId
-    ? {
-        tenantId,
-        OR: [
-          { engenheiroId: userId },
-          { clienteId: userId },
-        ],
-      }
+  const { tenantId, userId, role } = opts;
+  const defaultObraWhere = tenantId
+    ? userObraWhere(role || '', tenantId, userId)
     : undefined;
-  const obraId = data.obraId || (await firstId('obra', userObraWhere));
+  const obraId = data.obraId || (await firstId('obra', defaultObraWhere));
   if (
     ['obras', 'materiais', 'equipe', 'equipes', 'fornecedores', 'notificacoes'].includes(
       resourceKey

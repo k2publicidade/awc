@@ -97,7 +97,7 @@ async function main() {
   const obras: any[] = [];
   for (const obraData of obrasData) {
     const obra = await prisma.obra.upsert({
-      where: { codigo: obraData.codigo },
+      where: { tenantId_codigo: { tenantId: tenant.id, codigo: obraData.codigo } },
       update: {
         ...obraData,
         engenheiroId: engenheiro!.id,

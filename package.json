@@ -6,28 +6,35 @@
     "apps/*",
     "packages/*"
   ],
- "scripts": {
- "dev": "turbo run dev",
- "build": "turbo run build",
- "lint": "turbo run lint",
- "format": "prettier --write \"**/*.{ts,tsx,md}\"",
- "db:generate": "turbo run db:generate",
- "db:push": "turbo run db:push",
- "db:studio": "turbo run db:studio",
- "db:migrate:deploy": "prisma migrate deploy --schema=packages/database/prisma/schema.prisma",
- "supabase:configure": "node scripts/configure-supabase-env.js",
- "master:create": "node scripts/create-master-admin.js",
- "test:import": "npx tsx apps/web/scripts/test-obra-import.ts",
- "postinstall": "npx prisma generate --schema=packages/database/prisma/schema.prisma"
- },
- "devDependencies": {
- "turbo": "^2.3.0",
- "prettier": "^3.2.5",
- "prisma": "^6.0.0",
- "@prisma/client": "^6.0.0"
- },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "db:generate": "turbo run db:generate",
+    "db:push": "turbo run db:push",
+    "db:studio": "turbo run db:studio",
+    "db:migrate:deploy": "prisma migrate deploy --schema=packages/database/prisma/schema.prisma",
+    "supabase:configure": "node scripts/configure-supabase-env.js",
+    "master:create": "node scripts/create-master-admin.js",
+    "test:import": "npx tsx apps/web/scripts/test-obra-import.ts",
+    "postinstall": "npx prisma generate --schema=packages/database/prisma/schema.prisma"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "prettier": "^3.2.5",
+    "prisma": "^6.0.0",
+    "@prisma/client": "^6.0.0"
+  },
   "packageManager": "npm@10.9.2",
   "engines": {
     "node": ">=20.9.0"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "prisma@6.19.3": true,
+    "esbuild@0.28.2": true,
+    "unrs-resolver@1.12.2": true
   }
 }
